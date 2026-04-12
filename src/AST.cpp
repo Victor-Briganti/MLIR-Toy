@@ -17,7 +17,7 @@ namespace {
 // RAII helper to mange increasing/decreasing the identation as we traverse the
 // AST
 struct Indent {
-  Indent(int &Level) : Level(Level) { ++Level; }
+  Indent(int &LevelToIncrement) : Level(LevelToIncrement) { ++Level; }
   ~Indent() { --Level; }
   int &Level;
 };
@@ -67,7 +67,7 @@ template <typename T> static std::string loc(T *Node) {
 // Helper macro to bump the indentation level and print the leading spaces for
 // the current indentations
 #define INDENT()                                                               \
-  Indent level_(CurIdent);                                                     \
+  Indent level_raii_(CurIdent);                                                \
   indent();
 
 /// Dispatch the generic expression to the appropriate subclass using RTTI
@@ -157,7 +157,8 @@ void ASTDumper::dump(ReturnExprAST *Node) {
   }
 
   {
-    INDENT();
+    Indent level_inner_raii_(CurIdent);
+    indent();
     llvm::errs() << "(void)\n";
   }
 }
