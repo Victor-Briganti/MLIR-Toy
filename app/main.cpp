@@ -17,7 +17,7 @@ const std::string Archive =
     "  # variables is the way to reshape tensors (element count must match).\n"
     "  var b<2, 3> = [1, 2, 3, 4, 5, 6];\n"
     "\n"
-    "  # transpose() and print() are the only builtin, the following will\n"
+    "  # transpose() and print() are the only builtin, the following will "
     "transpose\n"
     "  # a and b and perform an element-wise multiplication before printing"
     "the result.\n"
@@ -28,14 +28,18 @@ int main() {
   LexerBuffer Lexer(Archive.c_str(), Archive.c_str() + Archive.size(), "test");
   Lexer.getNextToken();
 
+  int Count = 1;
   Token Tok = Lexer.getCurToken();
   while (true) {
-    std::cout << tokenToWord(Tok).data() << "\n";
+    std::cout << Count << ": " << tokenToWord(Tok).data() << "\n";
     Lexer.getNextToken();
     Tok = Lexer.getCurToken();
     if (Tok == Token::Eof) {
+      std::cout << tokenToWord(Tok).data() << "\n";
       break;
     }
+
+    Count++;
   }
 
   return 0;
