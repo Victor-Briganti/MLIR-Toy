@@ -189,7 +189,7 @@ public:
 
   /// Move to the next token in the stream, asserting on the current token
   /// matching the expectation.
-  void consume(Token Tok) {
+  void consume([[maybe_unused]] Token Tok) {
     assert(Tok == CurTok && "Consume token mismatch expectation.");
     getNextToken();
   }
@@ -311,7 +311,7 @@ private:
       // Comment until end of line
       do {
         LastChar = getNextChar();
-      } while (LastChar != EOF & LastChar != '\n' && LastChar != '\r');
+      } while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
 
       if (LastChar != EOF) {
         return getTok();
@@ -334,18 +334,18 @@ private:
 class LexerBuffer final : public Lexer {
 public:
   LexerBuffer(const char *Begin, const char *End, std::string Filename)
-      : Lexer(std::move(Filename)), Current(Begin), End(End) {}
+      : Lexer(std::move(Filename)), Current(Begin), EndOfBuffer(End) {}
 
 private:
-  const char *Current, *End;
+  const char *Current, *EndOfBuffer;
 
   llvm::StringRef readNextLine() override {
     auto *Begin = Current;
-    while (Current <= End && *Current && *Current != '\n') {
+    while (Current <= EndOfBuffer && *Current && *Current != '\n') {
       Current++;
     }
 
-    if (Current <= End && *Current) {
+    if (Current <= EndOfBuffer && *Current) {
       Current++;
     }
 
