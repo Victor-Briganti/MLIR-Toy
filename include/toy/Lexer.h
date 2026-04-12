@@ -20,7 +20,7 @@
 namespace toy {
 
 /// Defines the location in a file
-struct Location {
+struct SourceLocation {
   std::shared_ptr<std::string> File; ///< filename.
   int Line;                          ///< line number.
   int Col;                           ///< column number.
@@ -213,7 +213,7 @@ public:
   }
 
   /// Return the Location for the beginning of the current token.
-  Location getLastLocation() { return LastLocation; }
+  SourceLocation getLastLocation() { return LastLocation; }
 
   /// Return the current line in the file.
   int getLine() { return LastLocation.Line; }
@@ -226,7 +226,7 @@ private:
   Token CurTok = Token::Eof;
 
   /// Localtion for `CurTok`
-  Location LastLocation;
+  SourceLocation LastLocation;
 
   /// If the current Token is a identifier, this string contains  the value.
   std::string IdentifierStr;
