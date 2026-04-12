@@ -4,14 +4,10 @@ project(MlirToy
         VERSION
         0.0.1
         DESCRIPTION "MLIR Toy language project"
-        LANGUAGES CXX)
-
-# Configure the cxx_standard the same as LLVM as default
-if (NOT DEFINED CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-endif()
+        LANGUAGES CXX C)
 
 include(cmake/PreventInSourceBuilds.cmake)
+include(cmake/LLVM.cmake)
 include(cmake/StandardConfiguration.cmake)
 include(cmake/CompilerWarnings.cmake)
 include(cmake/StaticAnalyzer.cmake)
