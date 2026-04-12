@@ -11,6 +11,7 @@ include(cmake/LLVM.cmake)
 include(cmake/StandardConfiguration.cmake)
 include(cmake/CompilerWarnings.cmake)
 include(cmake/StaticAnalyzer.cmake)
+include(CTest)
 
 # Create the options and warnings targets
 add_library(mlirtoy_options INTERFACE)
@@ -30,3 +31,4 @@ add_library(mlirtoy::mlirtoy_options ALIAS mlirtoy_options)
 # Add the source directory
 add_subdirectory(src)
 add_subdirectory(app)
+add_subdirectory(test)

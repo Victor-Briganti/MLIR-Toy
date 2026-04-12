@@ -27,6 +27,14 @@ cmake -S . -B build
 cmake --build build
 ```
 
+### Testing
+
+For testing this project uses the [Catch2](https://github.com/catchorg/Catch2) framework. The code can be tested using the following command:
+
+```bash
+ctest --test-dir build
+```
+
 ## License
 
 This project is licensed under the MIT License.

@@ -51,9 +51,10 @@ enum class Token : int8_t {
   Var = -4,
   Def = -5,
   Print = -6,
+  Transpose = -7,
   // Primary
-  Identifier = -7,
-  Number = -8,
+  Identifier = -8,
+  Number = -9,
   // Unknown
   Unknown = -99,
 };
@@ -71,6 +72,9 @@ inline Token wordToToken(std::string Word) {
 
   if (Word == "print")
     return Token::Print;
+  
+  if (Word == "transpose")
+    return Token::Transpose;
 
   return Token::Identifier;
 }
@@ -119,6 +123,8 @@ inline llvm::StringRef tokenToWord(Token Tok) {
     return "DEF";
   case Token::Print:
     return "PRINT";
+  case Token::Transpose:
+    return "TRANSPOSE";
   case Token::Identifier:
     return "IDENTIFIER";
   case Token::Number:
