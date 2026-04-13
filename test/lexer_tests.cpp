@@ -15,7 +15,7 @@ TEST_CASE("Lexer identifies basic tokens", "[lexer]") {
   REQUIRE(Lexer.getNextToken() == Token::Identifier);
   REQUIRE(Lexer.getId() == "a");
   REQUIRE(Lexer.getNextToken() == Token::ParenthesesClose);
-  REQUIRE(Lexer.getNextToken() == Token::BracketOpen);
+  REQUIRE(Lexer.getNextToken() == Token::BraceOpen);
   REQUIRE(Lexer.getNextToken() == Token::Return);
   REQUIRE(Lexer.getNextToken() == Token::Identifier);
   REQUIRE(Lexer.getId() == "a");
@@ -23,7 +23,7 @@ TEST_CASE("Lexer identifies basic tokens", "[lexer]") {
   REQUIRE(Lexer.getNextToken() == Token::Number);
   REQUIRE(Lexer.getNumber() == 1.0);
   REQUIRE(Lexer.getNextToken() == Token::Semicolon);
-  REQUIRE(Lexer.getNextToken() == Token::BracketClose);
+  REQUIRE(Lexer.getNextToken() == Token::BraceClose);
   REQUIRE(Lexer.getNextToken() == Token::Eof);
 }
 
@@ -61,7 +61,7 @@ TEST_CASE("Lexer identifies tensors", "[lexer]") {
   REQUIRE(Lexer.getNumber() == 3.0);
   REQUIRE(Lexer.getNextToken() == Token::Greater);
   REQUIRE(Lexer.getNextToken() == Token::Equal);
-  REQUIRE(Lexer.getNextToken() == Token::SbracketOpen);
+  REQUIRE(Lexer.getNextToken() == Token::BracketOpen);
   REQUIRE(Lexer.getNextToken() == Token::Number);
   REQUIRE(Lexer.getNumber() == 1.0);
   REQUIRE(Lexer.getNextToken() == Token::Comma);
@@ -79,7 +79,7 @@ TEST_CASE("Lexer identifies tensors", "[lexer]") {
   REQUIRE(Lexer.getNextToken() == Token::Comma);
   REQUIRE(Lexer.getNextToken() == Token::Number);
   REQUIRE(Lexer.getNumber() == 6.0);
-  REQUIRE(Lexer.getNextToken() == Token::SbracketClose);
+  REQUIRE(Lexer.getNextToken() == Token::BracketClose);
   REQUIRE(Lexer.getNextToken() == Token::Semicolon);
   REQUIRE(Lexer.getNextToken() == Token::Eof);
 }
