@@ -308,7 +308,7 @@ public:
 
   auto begin() { return Functions.begin(); }
 
-  auto end() { return Functions.begin(); }
+  auto end() { return Functions.end(); }
 };
 
 void dump(ModuleAST &);

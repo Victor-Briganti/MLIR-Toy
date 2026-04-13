@@ -1,7 +1,7 @@
 add_library(ast AST.cpp)
 add_library(mlirtoy::ast ALIAS ast)
 
-mlirtoy_link_llvm_components(ast)
+mlirtoy_link_llvm_components(ast Support Core)
 target_link_libraries(ast PRIVATE mlirtoy_options mlirtoy_warnings)
 target_include_directories(ast 
                            ${WARNING_GUARD} 
