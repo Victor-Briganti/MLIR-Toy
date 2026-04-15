@@ -89,7 +89,7 @@ private:
   //                |  tensorLiteral, literalList
   std::unique_ptr<ExprAST> parseTensorLiteralExpr() {
     auto Loc = Lex.getLastLocation();
-    Lex.consume(Token::SbracketOpen);
+    Lex.consume(Token::BracketOpen);
 
     // Hold the list of values at this nesting level
     std::vector<std::unique_ptr<ExprAST>> Values;
@@ -98,7 +98,7 @@ private:
 
     do {
       // We can have either another nested array or a number literal
-      if (Lex.getCurToken() == Token::SbracketOpen) {
+      if (Lex.getCurToken() == Token::BracketOpen) {
         Values.push_back(parseTensorLiteralExpr());
         if (!Values.back()) {
           return nullptr; // Parse error in the nested array
@@ -112,7 +112,7 @@ private:
       }
 
       // End of this list on ']'
-      if (Lex.getCurToken() == Token::SbracketClose) {
+      if (Lex.getCurToken() == Token::BracketClose) {
         break;
       }
 
@@ -257,9 +257,9 @@ private:
       return parseNumberExpr();
     case Token::ParenthesesOpen:
       return parseParenExpr();
-    case Token::SbracketOpen:
+    case Token::BracketOpen:
       return parseTensorLiteralExpr();
-    case Token::BracketClose:
+    case Token::BraceClose:
     case Token::Semicolon:
       return nullptr;
     default:
@@ -395,11 +395,11 @@ private:
   ///                  | "return"
   ///                  | expr
   std::unique_ptr<ExprASTList> parseBlock() {
-    if (Lex.getCurToken() != Token::BracketOpen) {
+    if (Lex.getCurToken() != Token::BraceOpen) {
       return parseError<ExprASTList>("{", "to begin block");
     }
 
-    Lex.consume(Token::BracketOpen);
+    Lex.consume(Token::BraceOpen);
 
     auto ExprList = std::make_unique<ExprASTList>();
 
@@ -408,7 +408,7 @@ private:
       Lex.consume(Token::Semicolon);
     }
 
-    while (Lex.getCurToken() != Token::BracketClose &&
+    while (Lex.getCurToken() != Token::BraceClose &&
            Lex.getCurToken() != Token::Eof) {
       if (Lex.getCurToken() == Token::Var) {
         // Variable declaration
@@ -447,11 +447,11 @@ private:
       }
     }
 
-    if (Lex.getCurToken() != Token::BracketClose) {
+    if (Lex.getCurToken() != Token::BraceClose) {
       return parseError<ExprASTList>("}", "to close block");
     }
 
-    Lex.consume(Token::BracketClose);
+    Lex.consume(Token::BraceClose);
     return ExprList;
   }
 

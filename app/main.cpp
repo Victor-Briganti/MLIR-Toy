@@ -1,46 +1,42 @@
+#include "toy/AST.h"
 #include "toy/Lexer.h"
-
-#include <iostream>
-#include <string>
+#include "toy/Parser.h"
 
 using namespace toy;
 
-const std::string Archive =
-    "def main() {\n"
-    "  # Define a variable `a` with shape <2, 3>, initialized with the literal "
-    "value.\n"
-    "  # The shape is inferred from the supplied literal.\n"
-    "  var a = [[1, 2, 3], [4, 5, 6]];\n"
-    "\n"
-    "  # b is identical to a, the literal tensor is implicitly reshaped: "
-    "defining new\n"
-    "  # variables is the way to reshape tensors (element count must match).\n"
-    "  var b<2, 3> = [1, 2, 3, 4, 5, 6];\n"
-    "\n"
-    "  # transpose() and print() are the only builtin, the following will "
-    "transpose\n"
-    "  # a and b and perform an element-wise multiplication before printing"
-    "the result.\n"
-    "  print(transpose(a) * transpose(b));\n"
-    "}\n";
+static const char *Input = R"(
+# User defined generic function that operates on unknown shaped arguments.
+def multiply_transpose(a, b) {
+  return transpose(a) * transpose(b);
+}
+
+def main() {
+  # Define a variable `a` with shape <2, 3>, initialized with the literal value.
+  var a = [[1, 2, 3], [4, 5, 6]];
+  var b<2, 3> = [1, 2, 3, 4, 5, 6];
+
+  # This call will specialize `multiply_transpose` with <2, 3> for both
+  # arguments and deduce a return type of <3, 2> in initialization of `c`.
+  var c = multiply_transpose(a, b);
+
+  # A second call to `multiply_transpose` with <2, 3> for both arguments will
+  # reuse the previously specialized and inferred version and return <3, 2>.
+  var d = multiply_transpose(b, a);
+
+  # A new call with <3, 2> (instead of <2, 3>) for both dimensions will
+  # trigger another specialization of `multiply_transpose`.
+  var e = multiply_transpose(c, d);
+
+  # Finally, calling into `multiply_transpose` with incompatible shapes
+  # (<2, 3> and <3, 2>) will trigger a shape inference error.
+  var f = multiply_transpose(a, c);
+}
+)";
 
 int main() {
-  LexerBuffer Lexer(Archive.c_str(), Archive.c_str() + Archive.size(), "test");
-  Lexer.getNextToken();
-
-  int Count = 1;
-  Token Tok = Lexer.getCurToken();
-  while (true) {
-    std::cout << Count << ": " << tokenToWord(Tok).data() << "\n";
-    Lexer.getNextToken();
-    Tok = Lexer.getCurToken();
-    if (Tok == Token::Eof) {
-      std::cout << tokenToWord(Tok).data() << "\n";
-      break;
-    }
-
-    Count++;
-  }
-
+  LexerBuffer Lexer(Input, Input + strlen(Input), "test");
+  Parser Parser(Lexer);
+  auto Module = Parser.parseModule();
+  dump(*Module);
   return 0;
 }

@@ -32,10 +32,10 @@ enum class Token : int8_t {
   Comma = ',',
   ParenthesesOpen = '(',
   ParenthesesClose = ')',
-  BracketOpen = '{',
-  BracketClose = '}',
-  SbracketOpen = '[',
-  SbracketClose = ']',
+  BraceOpen = '{',
+  BraceClose = '}',
+  BracketOpen = '[',
+  BracketClose = ']',
   Plus = '+',
   Minus = '-',
   Asterisk = '*',
@@ -81,14 +81,14 @@ inline llvm::StringRef tokenToWord(Token Tok) {
     return "PARENTHESE_OPEN";
   case Token::ParenthesesClose:
     return "PARENTHESES_CLOSE";
+  case Token::BraceOpen:
+    return "BRACE_OPEN";
+  case Token::BraceClose:
+    return "BRACE_CLOSE";
   case Token::BracketOpen:
     return "BRACKET_OPEN";
   case Token::BracketClose:
     return "BRACKET_CLOSE";
-  case Token::SbracketOpen:
-    return "SBRACKET_OPEN";
-  case Token::SbracketClose:
-    return "SBRACKET_CLOSE";
   case Token::Plus:
     return "PLUS";
   case Token::Minus:
@@ -134,13 +134,13 @@ inline Token charToToken(char C) {
   case ')':
     return Token::ParenthesesClose;
   case '{':
-    return Token::BracketOpen;
+    return Token::BraceOpen;
   case '}':
-    return Token::BracketClose;
+    return Token::BraceClose;
   case '[':
-    return Token::SbracketOpen;
+    return Token::BracketOpen;
   case ']':
-    return Token::SbracketClose;
+    return Token::BracketClose;
   case '+':
     return Token::Plus;
   case '-':
