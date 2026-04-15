@@ -1,5 +1,10 @@
 include(FetchContent)
 
+# Disable deprecated-literal-operator warning for Catch2
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  add_compile_options(-Wno-deprecated-literal-operator)
+endif()
+
 # Fetch Catch2 v3
 FetchContent_Declare(
   Catch2
@@ -31,7 +36,7 @@ add_executable(parser_tests parser_tests.cpp)
 mlirtoy_link_llvm_components(parser_tests)
 target_link_libraries(parser_tests
                       PRIVATE
-                      mlirtoy::ast
+                      mlirtoy::AST
                       mlirtoy::mlirtoy_options
                       mlirtoy::mlirtoy_warnings
                       Catch2::Catch2WithMain)

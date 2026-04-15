@@ -24,8 +24,8 @@ include(TableGen)
 include(AddMLIR)
 
 # Add include directories and definitions
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # Macro to help linking LLVM components

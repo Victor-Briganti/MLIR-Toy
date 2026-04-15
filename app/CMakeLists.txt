@@ -5,7 +5,7 @@ mlirtoy_link_llvm_components(main Support Core)
 target_link_libraries(
   main
   PRIVATE
-  mlirtoy::ast
+  mlirtoy::AST
   mlirtoy_options
   mlirtoy_warnings)
 target_include_directories(

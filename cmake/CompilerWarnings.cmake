@@ -3,11 +3,9 @@ function(mlirtoy_set_project_warnings project_name)
   set(BASE_WARNINGS
       -Wall
       -Wextra
-      -Wshadow               # warn if variable declaration shadows one from a parent context
       -Wnon-virtual-dtor     # warn if a class with virtual functions has a non-virtual destructor
       -Wold-style-cast       # warn for c-style casts
       -Wcast-align           # warn for potential performance problem casts
-      -Wunused               # warn on anything being unused
       -Woverloaded-virtual   # warn if you overload (not override) a virtual function
       -Wpedantic             # warn if non-standard C++ is used
       -Wconversion           # warn on type conversions that may lose data
@@ -16,6 +14,10 @@ function(mlirtoy_set_project_warnings project_name)
       -Wdouble-promotion     # warn if float is implicit promoted to double
       -Wformat=2             # warn on security issues around formatting functions (printf)
       -Wimplicit-fallthrough # warn on statements that fallthrough without explicit annotation
+
+      # Disable this flags because of the code generation on MLIR
+      #-Wshadow               # warn if variable declaration shadows one from a parent context
+      #-Wunused               # warn on anything being unused
   )
 
   # 2. Warnings exclusive to GCC
@@ -36,6 +38,9 @@ function(mlirtoy_set_project_warnings project_name)
   else()
     message(AUTHOR_WARNING "No compiler warnings set for '${CMAKE_CXX_COMPILER_ID}'. Only GCC and Clang are supported by this macro.")
   endif()
+
+  # Disable the warnings on MLIR at the end to ensure they take precedence
+  list(APPEND PROJECT_WARNINGS -Wno-shadow -Wno-unused -Wno-unused-parameter -Wno-deprecated-literal-operator)
 
   # 5. Apply the warnings to the target for both C and C++
   target_compile_options(

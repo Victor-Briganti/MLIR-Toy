@@ -140,10 +140,10 @@ def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
     //===----------------------------------------------------------------------===//
 
     /// Returns the argument types of this function
-    ArrayRef<Ref> getArgumentTypes() { return getFunctionType().getInputs(); }
+    ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
 
     /// Returns the result types of this function
-    ArrayRef<Ref> getResultTypes() { return getFunctionType().getResults(); }
+    ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
 
     Region *getCallableRegion() { return &getBody(); }
   }];
