@@ -160,17 +160,17 @@ def GenericCallOp : Toy_Op<"generic_call"> {
   let summary = "generic_call operation";
   let description = [{
     Generic calls represent calls to a user defined function that needs to be
-      speciallized for the shape of its arguments. The callee name is attached
-      as a symbol reference via an attribute. The arguments list must match the
-      arguments expected by the callee. For example:
+    speciallized for the shape of its arguments. The callee name is attached
+    as a symbol reference via an attribute. The arguments list must match the
+    arguments expected by the callee. For example:
 
-      ```mlir
-      %4 = toy.generic_call @my_func(%1, %3)
-      : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
-         ```
+    ```mlir
+    %4 = toy.generic_call @my_func(%1, %3)
+    : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+    ```
 
-         This is only valid if a function named "my_func" exist and takes two
-           arguments.
+    This is only valid if a function named "my_func" exist and takes two
+    arguments.
   }];
 
   // The generic call operation takes a symbol reference attribute as the
@@ -200,7 +200,7 @@ def MulOp : Toy_Op<"mul"> {
   let summary = "element-wise multiplication operation";
   let description = [{
     The "mul" operation performs element-wise multplication between two
-      tensors. The shape of the tensor operands are expected to match.
+    tensors. The shape of the tensor operands are expected to match.
   }];
 
 
@@ -217,8 +217,108 @@ def MulOp : Toy_Op<"mul"> {
 }
 
 //===----------------------------------------------------------------------===//
-// MulOP
+// PrintOp
 //===----------------------------------------------------------------------===//
 
+def PrintOp : Toy_Op<"print"> {
+  let summary = "print operation";
+  let description = [{
+    The "print" builtin operation prints a given input tensor, and produces
+    no results.
+  }];
+
+  let arguments = (ins F64Tensor:$input);
+
+  let assemblyFormat = "$input attr-dict `:` type($input)";
+}
+
+//===----------------------------------------------------------------------===//
+// ReshapeOp
+//===----------------------------------------------------------------------===//
+
+def ReshapeOp : Toy_Op<"reshape"> {
+  let summary = "tensor reshape operation";
+  let description = [{
+    Reshape operation is transforming its input tensor into a new tensor with
+    the same number of elements bu different shapes. For example:
+
+    ```mlir
+    %0 = toy.reshape (%arg1 : tensor<10xf64>) to tensor<5x2xf64>
+    ```
+  }];
+
+  let arguments = (ins F64Tensor:$input);
+
+  // We expect that the reshape operation returns a statically shaped tensor.
+  let results = (outs StaticShapeTensorOf<[F64]>);
+
+  let assemblyFormat = [{
+    `(` $input `:` type($input) `)` attr-dict `to` type(results)
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// ReturnOp
+//===----------------------------------------------------------------------===//
+
+def ReturnOp : Toy_Op<"return"> {
+  let summary = "return operation";
+  let description = [{
+    The "return" operation represents a return operation within a function.
+    The operation takes a optional tensor operand and produces no results.
+    The operand type must match the signature of the function that contains.
+    The operation. For example:
+
+    ```mlir
+    toy.func @foo() -> tensor<2xf64> {
+        ...
+        toy.return %0 : tensor<2xf64>
+    }
+    ```
+  }];
+
+  // The return operation takes an optional input operand to return. This value
+  // must match the return type of the enclosing function
+  let arguments = (ins Variadic<F64Tensor>:$input);
+
+  // The return operation only emits the input in hte format if it is present.
+  let assemblyFormat = "($input^ `:` type($input))? attr-dict ";
+
+  // Allow building a ReturnOp with no return operand.
+  let builders = [
+    OpBuilder<(ins), [{ build($_builder, $_state, {}); }]>
+  ];
+
+  // Provide extra utility definitions on the C++ operation class definition.
+  let extraClassDeclaration = [{
+      bool hasOperand() { return getNumOperands() != 0; }
+  }];
+
+  // Invoke a static verify method to verify this return operation.
+  let hasVerifier = 1;
+}
+
+//===----------------------------------------------------------------------===//
+// TransposeOp
+//===----------------------------------------------------------------------===//
+
+def TransposeOp : Toy_Op<"return"> {
+  let summary = "transpose operation";
+
+  let arguments = (ins F64Tensor:$input);
+  let results = (outs F64Tensor);
+
+  let assemblyFormat = [{
+    `(` $input `:` type($input) `)` attr-dict `to` type(results)
+  }];
+
+  // Allow building a TransposeOp with from the input operand.
+  let builders = [
+    OpBuilder<(ins "Value":$input)>
+  ];
+
+  // Invoke a static verify method to verify this return operation.
+  let hasVerifier = 1;
+}
 
 #endif // TOY_OPS

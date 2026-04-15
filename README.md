@@ -32,8 +32,8 @@ cmake --build build
 There are times were you will need to see the code being generated to the operations in MLIR. The command to do that is:
 
 ```bash
+mlir-tblgen -gen-op-defs include/toy/Ops.td -I /usr/include/
 ```
-
 
 ### Testing
 
