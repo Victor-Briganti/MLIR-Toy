@@ -29,6 +29,7 @@ add_library(mlirtoy::mlirtoy_warnings ALIAS mlirtoy_warnings)
 add_library(mlirtoy::mlirtoy_options ALIAS mlirtoy_options)
 
 # Add the source directory
+add_subdirectory(include/toy)
 add_subdirectory(src)
 add_subdirectory(app)
 add_subdirectory(test)
