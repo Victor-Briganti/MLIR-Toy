@@ -1,4 +1,4 @@
-add_library(ast AST.cpp)
+add_library(ast parser/AST.cpp)
 add_library(mlirtoy::ast ALIAS ast)
 
 mlirtoy_link_llvm_components(ast Support Core)
