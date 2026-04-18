@@ -333,7 +333,7 @@ private:
     auto Type = std::make_unique<VarType>();
 
     while (Lex.getCurToken() == Token::Number) {
-      Type->Shape.push_back(static_cast<long>(Lex.getNumber()));
+      Type->shape.push_back(static_cast<long>(Lex.getNumber()));
       Lex.getNextToken();
       if (Lex.getCurToken() == Token::Comma) {
         Lex.getNextToken();
@@ -546,8 +546,8 @@ private:
   template <typename R, typename T, typename U = const char *>
   std::unique_ptr<R> parseError(T &&Expt, U &&Ctx = "") {
     auto CurToken = tokenToWord(Lex.getCurToken());
-    llvm::errs() << "Parse error (" << Lex.getLastLocation().Line << ", "
-                 << Lex.getLastLocation().Col << "): expected '" << Expt << "' "
+    llvm::errs() << "Parse error (" << Lex.getLastLocation().line << ", "
+                 << Lex.getLastLocation().col << "): expected '" << Expt << "' "
                  << Ctx << " but has Token " << CurToken << '\n';
     return nullptr;
   }

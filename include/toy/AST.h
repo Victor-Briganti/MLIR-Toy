@@ -21,7 +21,7 @@
 namespace toy {
 /// A variable type with shape information
 struct VarType {
-  std::vector<int64_t> Shape;
+  std::vector<int64_t> shape;
 };
 
 /// Base class for all expression nodes.
@@ -39,21 +39,21 @@ public:
     Transpose,
   };
 
-  ExprAST(ExprASTKind ASTKind, SourceLocation Location)
-      : Kind(ASTKind), Loc(std::move(Location)) {}
+  ExprAST(ExprASTKind astKind, SourceLocation location)
+      : kind(astKind), location(std::move(location)) {}
 
-  ExprASTKind getKind() const { return Kind; }
+  ExprASTKind getKind() const { return kind; }
 
-  constexpr llvm::StringRef getStrKind() const { return kindToString(Kind); }
+  constexpr llvm::StringRef getStrKind() const { return kindToString(kind); }
 
-  const SourceLocation &loc() { return Loc; }
+  const SourceLocation &loc() { return location; }
 
 private:
-  const ExprASTKind Kind;
-  SourceLocation Loc;
+  const ExprASTKind kind;
+  SourceLocation location;
 
-  constexpr llvm::StringRef kindToString(const ExprASTKind &K) const {
-    switch (K) {
+  constexpr llvm::StringRef kindToString(const ExprASTKind &kind) const {
+    switch (kind) {
     case ExprASTKind::VarDecl:
       return "VarDecl";
     case ExprASTKind::Return:
@@ -83,13 +83,13 @@ using ExprASTList = std::vector<std::unique_ptr<ExprAST>>;
 
 /// Expression class for numeric literals like "1.0"
 class NumberExprAST : public ExprAST {
-  double Val;
+  double val;
 
 public:
-  NumberExprAST(SourceLocation Location, double Value)
-      : ExprAST(ExprAST::ExprASTKind::Num, std::move(Location)), Val(Value) {}
+  NumberExprAST(SourceLocation loc, double value)
+      : ExprAST(ExprAST::ExprASTKind::Num, std::move(loc)), val(value) {}
 
-  double getValue() { return Val; }
+  double getValue() { return val; }
 
   /// LLVM style RTTI
   static bool classof(const ExprAST *C) {
@@ -99,19 +99,19 @@ public:
 
 /// Expression class for a literal value.
 class LiteralExprAST : public ExprAST {
-  std::vector<std::unique_ptr<ExprAST>> Values;
-  std::vector<int64_t> Dims;
+  std::vector<std::unique_ptr<ExprAST>> values;
+  std::vector<int64_t> dims;
 
 public:
-  LiteralExprAST(SourceLocation Location,
-                 std::vector<std::unique_ptr<ExprAST>> ValueList,
-                 std::vector<int64_t> Dimensions)
-      : ExprAST(ExprAST::ExprASTKind::Literal, std::move(Location)),
-        Values(std::move(ValueList)), Dims(std::move(Dimensions)) {}
+  LiteralExprAST(SourceLocation location,
+                 std::vector<std::unique_ptr<ExprAST>> valueList,
+                 std::vector<int64_t> dimensions)
+      : ExprAST(ExprAST::ExprASTKind::Literal, std::move(location)),
+        values(std::move(valueList)), dims(std::move(dimensions)) {}
 
-  llvm::ArrayRef<std::unique_ptr<ExprAST>> getValues() { return Values; }
+  llvm::ArrayRef<std::unique_ptr<ExprAST>> getValues() { return values; }
 
-  llvm::ArrayRef<int64_t> getDims() { return Dims; }
+  llvm::ArrayRef<int64_t> getDims() { return dims; }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -121,14 +121,14 @@ public:
 
 /// Expression class for referencing a variable, like "a"
 class VariableExprAST : public ExprAST {
-  std::string Name;
+  std::string name;
 
 public:
-  VariableExprAST(SourceLocation Location, std::string VariableName)
-      : ExprAST(ExprAST::ExprASTKind::Var, std::move(Location)),
-        Name(VariableName) {}
+  VariableExprAST(SourceLocation loc, std::string varName)
+      : ExprAST(ExprAST::ExprASTKind::Var, std::move(loc)),
+        name(std::move(varName)) {}
 
-  llvm::StringRef getName() { return Name; }
+  llvm::StringRef getName() { return name; }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -138,22 +138,22 @@ public:
 
 /// Expression class for declaring a variable
 class VarDeclExprAST : public ExprAST {
-  std::string Name;
-  VarType Type;
-  std::unique_ptr<ExprAST> InitVal;
+  std::string name;
+  VarType type;
+  std::unique_ptr<ExprAST> initVal;
 
 public:
-  VarDeclExprAST(SourceLocation Location, std::string VariableName,
-                 VarType VariableType, std::unique_ptr<ExprAST> Initializer)
-      : ExprAST(ExprAST::ExprASTKind::VarDecl, std::move(Location)),
-        Name(VariableName), Type(VariableType),
-        InitVal(std::move(Initializer)) {}
+  VarDeclExprAST(SourceLocation loc, std::string varName, VarType varType,
+                 std::unique_ptr<ExprAST> initializer)
+      : ExprAST(ExprAST::ExprASTKind::VarDecl, std::move(loc)),
+        name(std::move(varName)), type(std::move(varType)),
+        initVal(std::move(initializer)) {}
 
-  llvm::StringRef getName() { return Name; }
+  llvm::StringRef getName() { return name; }
 
-  VarType getType() { return Type; }
+  VarType getType() { return type; }
 
-  ExprAST *getInitVal() { return InitVal.get(); }
+  ExprAST *getInitVal() { return initVal.get(); }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -163,17 +163,17 @@ public:
 
 /// Expression class for a return operator.
 class ReturnExprAST : public ExprAST {
-  std::optional<std::unique_ptr<ExprAST>> Expr;
+  std::optional<std::unique_ptr<ExprAST>> expr;
 
 public:
-  ReturnExprAST(SourceLocation Location,
-                std::optional<std::unique_ptr<ExprAST>> Expression)
-      : ExprAST(ExprAST::ExprASTKind::Return, std::move(Location)),
-        Expr(std::move(Expression)) {}
+  ReturnExprAST(SourceLocation loc,
+                std::optional<std::unique_ptr<ExprAST>> expr)
+      : ExprAST(ExprAST::ExprASTKind::Return, std::move(loc)),
+        expr(std::move(expr)) {}
 
   std::optional<ExprAST *> getExpr() {
-    if (Expr.has_value()) {
-      return Expr->get();
+    if (expr.has_value()) {
+      return expr->get();
     }
 
     return std::nullopt;
@@ -187,20 +187,20 @@ public:
 
 /// Expression class for a binary operator.
 class BinaryExprAST : public ExprAST {
-  char Op;
-  std::unique_ptr<ExprAST> Lhs, Rhs;
+  char op;
+  std::unique_ptr<ExprAST> lhs, rhs;
 
 public:
-  BinaryExprAST(SourceLocation Location, char OpChar,
-                std::unique_ptr<ExprAST> Left, std::unique_ptr<ExprAST> Right)
-      : ExprAST(ExprAST::ExprASTKind::BinOp, std::move(Location)), Op(OpChar),
-        Lhs(std::move(Left)), Rhs(std::move(Right)) {}
+  BinaryExprAST(SourceLocation loc, char opChar, std::unique_ptr<ExprAST> left,
+                std::unique_ptr<ExprAST> right)
+      : ExprAST(ExprAST::ExprASTKind::BinOp, std::move(loc)), op(opChar),
+        lhs(std::move(left)), rhs(std::move(right)) {}
 
-  char getOp() { return Op; }
+  char getOp() { return op; }
 
-  ExprAST *getLhs() { return Lhs.get(); }
+  ExprAST *getLhs() { return lhs.get(); }
 
-  ExprAST *getRhs() { return Rhs.get(); }
+  ExprAST *getRhs() { return rhs.get(); }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -210,18 +210,18 @@ public:
 
 /// Expression class for function calls.
 class CallExprAST : public ExprAST {
-  std::string Calle;
-  std::vector<std::unique_ptr<ExprAST>> Args;
+  std::string callee;
+  std::vector<std::unique_ptr<ExprAST>> args;
 
 public:
-  CallExprAST(SourceLocation Location, std::string Callee,
-              std::vector<std::unique_ptr<ExprAST>> Arguments)
-      : ExprAST(ExprAST::ExprASTKind::Call, std::move(Location)), Calle(Callee),
-        Args(std::move(Arguments)) {}
+  CallExprAST(SourceLocation loc, std::string callee,
+              std::vector<std::unique_ptr<ExprAST>> args)
+      : ExprAST(ExprAST::ExprASTKind::Call, std::move(loc)),
+        callee(std::move(callee)), args(std::move(args)) {}
 
-  llvm::StringRef getCalle() { return Calle; }
+  llvm::StringRef getCallee() { return callee; }
 
-  llvm::ArrayRef<std::unique_ptr<ExprAST>> getArgs() { return Args; }
+  llvm::ArrayRef<std::unique_ptr<ExprAST>> getArgs() { return args; }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -231,14 +231,14 @@ public:
 
 /// Expression class for builint print calls.
 class PrintExprAST : public ExprAST {
-  std::unique_ptr<ExprAST> Arg;
+  std::unique_ptr<ExprAST> arg;
 
 public:
-  PrintExprAST(SourceLocation Location, std::unique_ptr<ExprAST> Argument)
-      : ExprAST(ExprAST::ExprASTKind::Print, std::move(Location)),
-        Arg(std::move(Argument)) {}
+  PrintExprAST(SourceLocation loc, std::unique_ptr<ExprAST> arg)
+      : ExprAST(ExprAST::ExprASTKind::Print, std::move(loc)),
+        arg(std::move(arg)) {}
 
-  ExprAST *getArg() { return Arg.get(); }
+  ExprAST *getArg() { return arg.get(); }
 
   /// LLVM style RTTI
   static bool classof(const ExprAST *C) {
@@ -248,14 +248,14 @@ public:
 
 /// Expression class for builint transpose calls.
 class TransposeExprAST : public ExprAST {
-  std::unique_ptr<ExprAST> Arg;
+  std::unique_ptr<ExprAST> arg;
 
 public:
-  TransposeExprAST(SourceLocation Location, std::unique_ptr<ExprAST> Argument)
-      : ExprAST(ExprAST::ExprASTKind::Transpose, std::move(Location)),
-        Arg(std::move(Argument)) {}
+  TransposeExprAST(SourceLocation loc, std::unique_ptr<ExprAST> arg)
+      : ExprAST(ExprAST::ExprASTKind::Transpose, std::move(loc)),
+        arg(std::move(arg)) {}
 
-  ExprAST *getArg() { return Arg.get(); }
+  ExprAST *getArg() { return arg.get(); }
 
   /// LLVM stype RTTI
   static bool classof(const ExprAST *C) {
@@ -267,48 +267,48 @@ public:
 /// name, and its argument names (thus implicitly the number of arguments the
 /// function takes).
 class PrototypeAST {
-  SourceLocation Loc;
-  std::string Name;
-  std::vector<std::unique_ptr<VariableExprAST>> Args;
+  SourceLocation location;
+  std::string name;
+  std::vector<std::unique_ptr<VariableExprAST>> args;
 
 public:
-  PrototypeAST(SourceLocation Location, const std::string &NameStr,
-               std::vector<std::unique_ptr<VariableExprAST>> Arguments)
-      : Loc(std::move(Location)), Name(NameStr), Args(std::move(Arguments)) {}
+  PrototypeAST(SourceLocation loc, const std::string &nameStr,
+               std::vector<std::unique_ptr<VariableExprAST>> args)
+      : location(std::move(loc)), name(nameStr), args(std::move(args)) {}
 
-  const SourceLocation &loc() { return Loc; }
+  const SourceLocation &loc() { return location; }
 
-  llvm::StringRef getName() { return Name; }
+  llvm::StringRef getName() { return name; }
 
-  llvm::ArrayRef<std::unique_ptr<VariableExprAST>> getArgs() { return Args; }
+  llvm::ArrayRef<std::unique_ptr<VariableExprAST>> getArgs() { return args; }
 };
 
 /// This class represents a function definition itself.
 class FunctionAST {
-  std::unique_ptr<PrototypeAST> Proto;
-  std::unique_ptr<ExprASTList> Body;
+  std::unique_ptr<PrototypeAST> proto;
+  std::unique_ptr<ExprASTList> body;
 
 public:
-  FunctionAST(std::unique_ptr<PrototypeAST> Prototype,
-              std::unique_ptr<ExprASTList> FunctionBody)
-      : Proto(std::move(Prototype)), Body(std::move(FunctionBody)) {}
+  FunctionAST(std::unique_ptr<PrototypeAST> prototype,
+              std::unique_ptr<ExprASTList> functionBody)
+      : proto(std::move(prototype)), body(std::move(functionBody)) {}
 
-  PrototypeAST *getProto() { return Proto.get(); }
+  PrototypeAST *getProto() { return proto.get(); }
 
-  ExprASTList *getBody() { return Body.get(); }
+  ExprASTList *getBody() { return body.get(); }
 };
 
 /// This class represents a list of functions to be processed together.
 class ModuleAST {
-  std::vector<FunctionAST> Functions;
+  std::vector<FunctionAST> functions;
 
 public:
-  ModuleAST(std::vector<FunctionAST> FunctionList)
-      : Functions(std::move(FunctionList)) {}
+  ModuleAST(std::vector<FunctionAST> functionList)
+      : functions(std::move(functionList)) {}
 
-  auto begin() { return Functions.begin(); }
+  auto begin() { return functions.begin(); }
 
-  auto end() { return Functions.end(); }
+  auto end() { return functions.end(); }
 };
 
 void dump(ModuleAST &);

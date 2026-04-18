@@ -89,9 +89,9 @@ TEST_CASE("Parser handles variable declarations with types", "[parser]") {
   auto *VarDecl = llvm::dyn_cast<VarDeclExprAST>(Func.getBody()->front().get());
   REQUIRE(VarDecl != nullptr);
   REQUIRE(VarDecl->getName() == "a");
-  REQUIRE(VarDecl->getType().Shape.size() == 2);
-  REQUIRE(VarDecl->getType().Shape[0] == 2);
-  REQUIRE(VarDecl->getType().Shape[1] == 3);
+  REQUIRE(VarDecl->getType().shape.size() == 2);
+  REQUIRE(VarDecl->getType().shape[0] == 2);
+  REQUIRE(VarDecl->getType().shape[1] == 3);
 
   auto *InitVal = llvm::dyn_cast<LiteralExprAST>(VarDecl->getInitVal());
   REQUIRE(InitVal != nullptr);

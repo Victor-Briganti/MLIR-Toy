@@ -78,9 +78,9 @@ private:
 
   /// Helper conversion for a Toy AST location to an MLIR location.
   mlir::Location loc(const toy::SourceLocation &loc) {
-    return mlir::FileLineColLoc::get(builder.getStringAttr(*loc.File),
-                                     static_cast<unsigned>(loc.Line),
-                                     static_cast<unsigned>(loc.Col));
+    return mlir::FileLineColLoc::get(builder.getStringAttr(*loc.file),
+                                     static_cast<unsigned>(loc.line),
+                                     static_cast<unsigned>(loc.col));
   }
 
   /// Declare a variable in the current scope, return success if the variable
@@ -107,7 +107,7 @@ private:
 
   /// Build an MLIR type from a Toy AST variable type (forward to the generic
   /// getType above).
-  mlir::Type getType(const toy::VarType &type) { return getType(type.Shape); }
+  mlir::Type getType(const toy::VarType &type) { return getType(type.shape); }
 
   /// Create the prototype for an MLIR function with as many arguments as the
   /// provided Toy AST prototype.
@@ -117,7 +117,7 @@ private:
     // This is a generic function, the return type will be inferred later.
     // Arguments type are uniformly unranked tensors.
     llvm::SmallVector<mlir::Type, 4> argTypes(proto.getArgs().size(),
-                                              getType(toy::VarType().Shape));
+                                              getType(toy::VarType().shape));
 
     auto funcType = builder.getFunctionType(argTypes, {});
     return mlir::toy::FuncOp::create(builder, location, proto.getName(),
@@ -177,7 +177,7 @@ private:
       // the function.
       function.setType(
           builder.getFunctionType(function.getFunctionType().getInputs(),
-                                  getType(toy::VarType().Shape)));
+                                  getType(toy::VarType().shape)));
     }
 
     return function;
@@ -317,7 +317,7 @@ private:
   /// Emit a call expression. It emits specific operations for the `tranpose`
   /// builtin. Other identifiers are assumed to be user-defined functions.
   mlir::Value mlirGen(toy::CallExprAST &call) {
-    llvm::StringRef callee = call.getCalle();
+    llvm::StringRef callee = call.getCallee();
     auto location = loc(call.loc());
 
     // Codegen the operands first.
@@ -412,7 +412,7 @@ private:
     // We have the initializer value, but in case the variable was declared with
     // specific shape, we emit a "reshape" operation. It will get optimized out
     // later as needed.
-    if (!vardecl.getType().Shape.empty()) {
+    if (!vardecl.getType().shape.empty()) {
       value = ReshapeOp::create(builder, loc(vardecl.loc()),
                                 getType(vardecl.getType()), value);
     }
