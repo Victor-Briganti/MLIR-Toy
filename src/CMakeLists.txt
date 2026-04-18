@@ -36,6 +36,13 @@ add_library(Dialect mlir/Dialect.cpp)
 add_library(mlirtoy::Dialect ALIAS Dialect)
 add_dependencies(Dialect ToyOpIncGen) # ToyOpIncGen needs to be build first
 mlirtoy_link_llvm_components(Dialect)
+mlirtoy_link_mlir_libs(
+  Dialect
+  MLIRIR
+  MLIRSideEffectInterfaces
+  MLIRCallInterfaces
+  MLIRFunctionInterfaces
+  MLIRBytecodeReader)
 target_link_libraries(
   Dialect
   PRIVATE
@@ -66,6 +73,11 @@ set_target_properties(
 add_library(MLIRGen mlir/MLIRGen.cpp)
 add_library(mlirtoy::MLIRGen ALIAS MLIRGen)
 mlirtoy_link_llvm_components(MLIRGen)
+mlirtoy_link_mlir_libs(
+  MLIRGen
+  MLIRIR
+  MLIRParser
+  MLIRSupport)
 add_dependencies(MLIRGen ToyOpIncGen) # ToyOpIncGen needs to be build first
 target_link_libraries(
   MLIRGen

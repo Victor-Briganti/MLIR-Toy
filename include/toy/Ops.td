@@ -302,7 +302,7 @@ def ReturnOp : Toy_Op<"return"> {
 // TransposeOp
 //===----------------------------------------------------------------------===//
 
-def TransposeOp : Toy_Op<"return"> {
+def TransposeOp : Toy_Op<"transpose"> {
   let summary = "transpose operation";
 
   let arguments = (ins F64Tensor:$input);

@@ -33,3 +33,8 @@ macro(mlirtoy_link_llvm_components target)
   llvm_map_components_to_libnames(llvm_libs ${ARGN})
   target_link_libraries(${target} PRIVATE ${llvm_libs})
 endmacro()
+
+# Macro to help linking MLIR libraries
+macro(mlirtoy_link_mlir_libs target)
+  target_link_libraries(${target} PRIVATE ${ARGN})
+endmacro()

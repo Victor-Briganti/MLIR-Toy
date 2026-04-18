@@ -20,7 +20,7 @@ class ModuleAST;
 // Emit IR for the given toy moduleAST, retursn a newly created MLIR module or
 // nullptr on failure.
 mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &Ctx,
-                                          ModuleAST MAT);
+                                          ModuleAST &MAT);
 } // namespace toy
 
 #endif // TOY_MLIRGEN_H

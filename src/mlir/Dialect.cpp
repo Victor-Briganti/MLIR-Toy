@@ -128,6 +128,11 @@ mlir::ParseResult ConstantOp::parse(mlir::OpAsmParser &Parser,
   return mlir::success();
 }
 
+void ConstantOp::print(mlir::OpAsmPrinter &OS) {
+  OS << " " << getValue();
+  OS.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"value"});
+}
+
 /// Verifier for the constant operation. This corresponds to the `let
 /// hasVerifier = 1` in the op definition.
 llvm::LogicalResult ConstantOp::verify() {
