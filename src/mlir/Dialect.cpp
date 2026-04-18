@@ -285,7 +285,7 @@ llvm::LogicalResult ReturnOp::verify() {
   // Check that the result type of the function matches the operand type.
   if (InputType == ResType || llvm::isa<mlir::UnrankedTensorType>(InputType) ||
       llvm::isa<mlir::UnrankedTensorType>(ResType)) {
-    mlir::success();
+    return mlir::success();
   }
 
   return emitError() << "type of return operand (" << InputType

@@ -10,7 +10,8 @@
 
 namespace mlir {
 class MLIRContext;
-template <typename OpTy> class OwningOpRef;
+template <typename OpTy>
+class OwningOpRef;
 class ModuleOp;
 } // namespace mlir
 
@@ -19,8 +20,7 @@ class ModuleAST;
 
 // Emit IR for the given toy moduleAST, retursn a newly created MLIR module or
 // nullptr on failure.
-mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &Ctx,
-                                          ModuleAST &MAT);
+mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &, ModuleAST &);
 } // namespace toy
 
 #endif // TOY_MLIRGEN_H

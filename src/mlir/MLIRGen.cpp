@@ -244,7 +244,7 @@ private:
       }
     }
 
-    // Otherwise, this retur operation has zero operands.
+    // Otherwise, this return operation has zero operands.
     ReturnOp::create(builder, location,
                      expr ? llvm::ArrayRef(expr)
                           : llvm::ArrayRef<mlir::Value>());
@@ -337,17 +337,16 @@ private:
   }
 
   /// Emit a call expression to the builtin 'transpose' function.
-  llvm::LogicalResult mlirGen(toy::TransposeExprAST &call) {
+  mlir::Value mlirGen(toy::TransposeExprAST &call) {
     auto location = loc(call.loc());
 
     // Codegen the operand first.
     auto arg = mlirGen(*call.getArg());
     if (!arg) {
-      return mlir::failure();
+      return nullptr;
     }
 
-    TransposeOp::create(builder, location, arg);
-    return mlir::success();
+    return TransposeOp::create(builder, location, arg);
   }
 
   /// Emit a call expression to the builtin 'print' function.
@@ -381,11 +380,13 @@ private:
       return mlirGen(llvm::cast<toy::LiteralExprAST>(expr));
     case toy::ExprAST::ExprASTKind::Call:
       return mlirGen(llvm::cast<toy::CallExprAST>(expr));
+    case toy::ExprAST::ExprASTKind::Transpose:
+      return mlirGen(llvm::cast<toy::TransposeExprAST>(expr));
     case toy::ExprAST::ExprASTKind::Num:
       return mlirGen(llvm::cast<toy::NumberExprAST>(expr));
     default:
       emitError(loc(expr.loc()))
-          << "MLIR codegen encountered na unhandled expr kind '"
+          << "MLIR codegen encountered an unhandled expr kind '"
           << llvm::Twine(expr.getStrKind()) << "'";
       return nullptr;
     }
@@ -444,14 +445,14 @@ private:
 
       if (auto *print = llvm::dyn_cast<toy::PrintExprAST>(expr.get())) {
         if (mlir::failed(mlirGen(*print))) {
-          return mlir::success();
+          return mlir::failure();
         }
         continue;
       }
 
       if (auto *transpose = llvm::dyn_cast<toy::TransposeExprAST>(expr.get())) {
-        if (mlir::failed(mlirGen(*transpose))) {
-          return mlir::success();
+        if (!mlirGen(*transpose)) {
+          return mlir::failure();
         }
         continue;
       }
@@ -471,7 +472,8 @@ namespace toy {
 
 // The public API for codegen
 mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &context,
-                                          ModuleAST &moudleAST) {
-  return MLIRGenImpl(context).mlirGen(moudleAST);
+                                          ModuleAST &moduleAST) {
+  return MLIRGenImpl(context).mlirGen(moduleAST);
 }
+
 } // namespace toy

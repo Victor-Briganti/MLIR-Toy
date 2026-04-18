@@ -240,7 +240,7 @@ def ReshapeOp : Toy_Op<"reshape"> {
   let summary = "tensor reshape operation";
   let description = [{
     Reshape operation is transforming its input tensor into a new tensor with
-    the same number of elements bu different shapes. For example:
+    the same number of elements but different shapes. For example:
 
     ```mlir
     %0 = toy.reshape (%arg1 : tensor<10xf64>) to tensor<5x2xf64>
@@ -261,7 +261,7 @@ def ReshapeOp : Toy_Op<"reshape"> {
 // ReturnOp
 //===----------------------------------------------------------------------===//
 
-def ReturnOp : Toy_Op<"return"> {
+def ReturnOp : Toy_Op<"return", [Pure, HasParent<"FuncOp">, Terminator]> {
   let summary = "return operation";
   let description = [{
     The "return" operation represents a return operation within a function.
