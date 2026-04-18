@@ -1,0 +1,10 @@
+# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+
+# CHECK-LABEL: toy.func @ops_test
+# CHECK-SAME: (%[[ARG0:.*]]: tensor<*xf64>, %[[ARG1:.*]]: tensor<*xf64>)
+def ops_test(a, b) {
+  # CHECK: %[[ADD:.*]] = toy.add %[[ARG0]], %[[ARG1]] : tensor<*xf64>(tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
+  # CHECK: %[[MUL:.*]] = toy.mul %[[ADD]], %[[ARG0]] : tensor<*xf64>(tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
+  # CHECK: toy.return %[[MUL]] : tensor<*xf64>
+  return (a + b) * a;
+}
