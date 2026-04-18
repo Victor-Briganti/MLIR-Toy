@@ -246,7 +246,7 @@ public:
   }
 };
 
-/// Expression class for builint trasnpose calls.
+/// Expression class for builint transpose calls.
 class TransposeExprAST : public ExprAST {
   std::unique_ptr<ExprAST> Arg;
 
