@@ -27,6 +27,14 @@ cmake -S . -B build
 cmake --build build
 ```
 
+#### Building MLIR Tablegen
+
+There are times were you will need to see the code being generated to the operations in MLIR. The command to do that is:
+
+```bash
+mlir-tblgen -gen-op-defs include/toy/Ops.td -I /usr/include/
+```
+
 ### Testing
 
 For testing this project uses the [Catch2](https://github.com/catchorg/Catch2) framework. The code can be tested using the following command:

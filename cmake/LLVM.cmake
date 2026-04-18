@@ -24,12 +24,17 @@ include(TableGen)
 include(AddMLIR)
 
 # Add include directories and definitions
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # Macro to help linking LLVM components
 macro(mlirtoy_link_llvm_components target)
   llvm_map_components_to_libnames(llvm_libs ${ARGN})
   target_link_libraries(${target} PRIVATE ${llvm_libs})
+endmacro()
+
+# Macro to help linking MLIR libraries
+macro(mlirtoy_link_mlir_libs target)
+  target_link_libraries(${target} PRIVATE ${ARGN})
 endmacro()

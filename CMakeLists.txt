@@ -17,6 +17,9 @@ include(CTest)
 add_library(mlirtoy_options INTERFACE)
 add_library(mlirtoy_warnings INTERFACE)
 
+# Define WARNING_GUARD as SYSTEM to suppress warnings from included headers
+set(WARNING_GUARD SYSTEM)
+
 # Configure the project with the cxx_standard that we had set
 target_compile_features(mlirtoy_options INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 mlirtoy_enable_clang_tidy(mlirtoy_options ON)
@@ -29,6 +32,7 @@ add_library(mlirtoy::mlirtoy_warnings ALIAS mlirtoy_warnings)
 add_library(mlirtoy::mlirtoy_options ALIAS mlirtoy_options)
 
 # Add the source directory
+add_subdirectory(include/toy)
 add_subdirectory(src)
 add_subdirectory(app)
 add_subdirectory(test)

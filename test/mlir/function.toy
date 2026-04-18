@@ -1,0 +1,20 @@
+# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+
+# CHECK-LABEL: toy.func @multiply_transpose
+# CHECK-SAME: (%[[ARG0:.*]]: tensor<*xf64>, %[[ARG1:.*]]: tensor<*xf64>)
+def multiply_transpose(a, b) {
+  # CHECK: %[[T0:.*]] = toy.transpose(%[[ARG0]] : tensor<*xf64>) to tensor<*xf64>
+  # CHECK: %[[T1:.*]] = toy.transpose(%[[ARG1]] : tensor<*xf64>) to tensor<*xf64>
+  # CHECK: %[[RES:.*]] = toy.mul %[[T0]], %[[T1]] : tensor<*xf64>(tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
+  # CHECK: toy.return %[[RES]] : tensor<*xf64>
+  return transpose(a) * transpose(b);
+}
+
+# CHECK-LABEL: toy.func @main()
+def main() {
+  var a = [[1, 2], [3, 4]];
+  # CHECK: toy.generic_call @multiply_transpose
+  # CHECK-SAME: (tensor<2x2xf64>, tensor<2x2xf64>) -> tensor<*xf64>
+  var b = multiply_transpose(a, a);
+  print(b);
+}

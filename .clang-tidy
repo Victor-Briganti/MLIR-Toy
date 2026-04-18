@@ -1,6 +1,10 @@
 Checks: >
   -*,
   clang-diagnostic-*,
+  -clang-diagnostic-shadow,
+  -clang-diagnostic-unused-parameter,
+  -clang-diagnostic-unused-variable,
+  -clang-diagnostic-unused-function,
   llvm-*,
   misc-*,
   -misc-const-correctness,

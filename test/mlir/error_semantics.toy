@@ -1,0 +1,6 @@
+# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+
+def main() {
+  # CHECK: unknown variable 'undef_var'
+  print(undef_var);
+}
