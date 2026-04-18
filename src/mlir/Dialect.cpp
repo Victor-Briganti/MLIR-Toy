@@ -1,5 +1,13 @@
 //===--- Dialect.cpp - Toy IR Dialect registration in MLIR ----------------===//
 //
+// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// Modified by: Victor Briganti in 2026
+//
+//===----------------------------------------------------------------------===//
+//
 // This file implements the dialect for the Toy IR: custom type parsing and
 // operation verification.
 //

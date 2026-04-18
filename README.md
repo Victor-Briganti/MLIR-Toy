@@ -37,7 +37,15 @@ mlir-tblgen -gen-op-defs include/toy/Ops.td -I /usr/include/
 
 ### Testing
 
-For testing this project uses the [Catch2](https://github.com/catchorg/Catch2) framework. The code can be tested using the following command:
+For testing this project uses the [Catch2](https://github.com/catchorg/Catch2) framework and the [LLVM Integrated Tester (lit)](https://llvm.org/docs/CommandGuide/lit.html). 
+
+lit is a tool designed to be used alongside the LLVM infraestructure, it is made in python. To install it, create a virtualenv in python and run the following command:
+
+```bash
+pip install -r requirements.txt
+```
+
+After installed the code can be tested using the following command:
 
 ```bash
 ctest --test-dir build
@@ -45,9 +53,9 @@ ctest --test-dir build
 
 ## License
 
-This project is licensed under the MIT License.
-See the LICENSE file for details.
+This project is licensed under the  Apache-2.0 WITH LLVM-exception.
+See the LICENSE.md file for details.
 
 ## Acknowledgments
 
-This project is heavily inspired by the Toy language example implemented in the official LLVM source tree and documentation.
+This project is heavily inspired by the Toy language example implemented in the official LLVM [source tree](https://github.com/llvm/llvm-project/tree/main/mlir/examples/toy) and documentation.

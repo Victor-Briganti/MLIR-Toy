@@ -1,5 +1,13 @@
 //===--- AST.cpp - Helper for printing the AST ----------------------------===//
 //
+// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// Modified by: Victor Briganti in 2026
+//
+//===----------------------------------------------------------------------===//
+//
 // This file implements the AST dump for the Toy language.
 //
 //===----------------------------------------------------------------------===//

@@ -1,5 +1,12 @@
 //===--- AST.h - AST for the Toy language ---------------------------------===//
 //
+// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// Modified by: Victor Briganti in 2026
+//
+//===----------------------------------------------------------------------===//
 // This file implements the AST for the Toy language. It is optimized for
 // simplicity, not efficiency. The AST forms a tree structure where each node
 // references its children using std::unique_ptr.
