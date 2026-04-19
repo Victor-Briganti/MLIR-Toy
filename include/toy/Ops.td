@@ -86,7 +86,7 @@ def ConstantOp : Toy_Op<"constant", [Pure]> {
       ```
   }];
 
-  // The cosntant operation takes an attribute as the only input.
+  // The constant operation takes an attribute as the only input.
   let arguments = (ins F64ElementsAttr:$value);
 
   // The constant operation returns a single value of TensorType
@@ -99,7 +99,7 @@ def ConstantOp : Toy_Op<"constant", [Pure]> {
   // populates the `state` that MLIR uses to create operations, i.e. these
   // are used when using `ConstantOp::create(builder, ...)`.
   let builders = [
-    // Build a constant with a given cosntant tensor value.
+    // Build a constant with a given constant tensor value.
     OpBuilder<(ins "DenseElementsAttr":$value), [{
       build($_builder, $_state, value.getType(), value);
     }]>,

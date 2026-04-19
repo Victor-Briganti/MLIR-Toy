@@ -4,9 +4,14 @@ add_executable(mlirtoy::main ALIAS main)
 mlirtoy_link_llvm_components(main Support Core)
 mlirtoy_link_mlir_libs(
   main
+  MLIRAnalysis
+  MLIRFunctionInterfaces
   MLIRIR
   MLIRParser
-  MLIRSupport)
+  MLIRPass
+  MLIRSideEffectInterfaces
+  MLIRSupport
+  MLIRTransforms)
 target_link_libraries(
   main
   PRIVATE
