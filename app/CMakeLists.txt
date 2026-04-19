@@ -18,6 +18,7 @@ target_link_libraries(
   mlirtoy::AST
   mlirtoy::Dialect
   mlirtoy::MLIRGen
+  mlirtoy::ToyCombine
   mlirtoy_options
   mlirtoy_warnings)
 target_include_directories(

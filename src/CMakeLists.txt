@@ -101,3 +101,39 @@ set_target_properties(
   ${PROJECT_VERSION}
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN YES)
+
+# --------------------------------------------------------------------------- #
+# ToyCombine
+# --------------------------------------------------------------------------- #
+
+add_library(ToyCombine mlir/ToyCombine.cpp)
+add_library(mlirtoy::ToyCombine ALIAS ToyCombine)
+mlirtoy_link_llvm_components(ToyCombine)
+mlirtoy_link_mlir_libs(
+  ToyCombine
+  MLIRIR
+  MLIRParser
+  MLIRSupport)
+add_dependencies(ToyCombine ToyOpIncGen) # ToyOpIncGen needs to be build first
+target_link_libraries(
+  ToyCombine
+  PRIVATE
+  mlirtoy_options
+  mlirtoy_warnings)
+target_include_directories(
+  ToyCombine
+  ${WARNING_GUARD}
+  PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
+target_compile_features(
+  ToyCombine
+  PUBLIC
+  cxx_std_${CMAKE_CXX_STANDARD})
+set_target_properties(
+  ToyCombine
+  PROPERTIES
+  VERSION
+  ${PROJECT_VERSION}
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN YES)
