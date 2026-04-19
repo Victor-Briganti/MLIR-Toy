@@ -50,4 +50,17 @@ def FoldConstantReshapeOptPattern : Pat<
     (ReshapeOp:$res (ConstantOp $arg)),
     (ConstantOp (ReshapeConstant $arg, $res))>;
 
+//===----------------------------------------------------------------------===//
+// Pattern-Match and Rewrite with Constraints
+//===----------------------------------------------------------------------===//
+
+// DRR allows for constraint checking when the transformation is conditional
+// on operand properties
+
+// Reshape(x) = x, where input and output shape are identical
+def TypesAreIdentical : Constraint<CPred<"$0.getType() == $1.getType()">>;
+def RedundantReshapeOptPattern : Pat<
+  (ReshapeOp:$res $arg), (replaceWithValue $arg),
+  [(TypesAreIdentical $res, $arg)]>;
+
 #endif // TOY_COMBINE
