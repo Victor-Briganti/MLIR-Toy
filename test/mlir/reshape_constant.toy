@@ -1,0 +1,11 @@
+# RUN: toy-compiler %s --opt -emit=mlir 2>&1 | FileCheck %s
+
+# CHECK-LABEL: toy.func @main()
+def main() {
+  # CHECK: %[[CONST0:.*]] = toy.constant dense<{{.*}}> : tensor<2xf64>
+  # CHECK: toy.print %[[CONST0]] : tensor<2xf64>
+  var a<2,1> = [1, 2];
+  var b<2,1> = a;
+  var c<2> = b;
+  print(c);
+}

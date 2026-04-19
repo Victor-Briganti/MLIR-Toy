@@ -70,5 +70,5 @@ void toy::TransposeOp::getCanonicalizationPatterns(
 /// that they can be picked up by Canonicalization framework.
 void toy::ReshapeOp::getCanonicalizationPatterns(
     mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-  results.add<ReshapeReshapeOpPattern>(context);
+  results.add<ReshapeReshapeOpPattern, FoldConstantReshapeOptPattern>(context);
 }

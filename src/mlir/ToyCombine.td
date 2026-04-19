@@ -36,4 +36,18 @@ include "toy/Ops.td"
 def ReshapeReshapeOpPattern : Pat<(ReshapeOp(ReshapeOp $arg)),
                                   (ReshapeOp $arg)>;
 
+//===----------------------------------------------------------------------===//
+// Pattern-Match and Rewrite using Native Code Call
+//===----------------------------------------------------------------------===//
+
+// Native Code Calls may be used for more complex transformations using inline
+// C++ and C++ helper functions.
+
+// Reshape(Constant(x)) = x'
+def ReshapeConstant : 
+  NativeCodeCall<"$0.reshape(::llvm::cast<ShapedType>($1.getType()))">;
+def FoldConstantReshapeOptPattern : Pat<
+    (ReshapeOp:$res (ConstantOp $arg)),
+    (ConstantOp (ReshapeConstant $arg, $res))>;
+
 #endif // TOY_COMBINE
