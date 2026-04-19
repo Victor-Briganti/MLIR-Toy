@@ -278,7 +278,7 @@ private:
   /// Recursively parse the right hand side of a binary epxression, the ExprPrec
   /// argument indicates the precedence of the current binary operator.
   ///
-  /// binOpRhs := ('+' primary)*
+  /// binOpRhs := ( '+' primary )*
   std::unique_ptr<ExprAST> parseBinOpRHS(int ExprPrec,
                                          std::unique_ptr<ExprAST> LHS) {
     // If this is a binop, find its precedence
@@ -459,6 +459,19 @@ private:
     }
 
     Lex.consume(Token::BraceClose);
+
+    // Always return the last expression by wrapping it in a ReturnExprAST
+    // if it's not already one.
+    if (!ExprList->empty()) {
+      auto &LastExpr = ExprList->back();
+      if (LastExpr->getKind() != ExprAST::ExprASTKind::Return &&
+          LastExpr->getKind() != ExprAST::ExprASTKind::Print) {
+        auto Loc = LastExpr->loc();
+        LastExpr = std::make_unique<ReturnExprAST>(std::move(Loc),
+                                                   std::move(LastExpr));
+      }
+    }
+
     return ExprList;
   }
 
@@ -547,7 +560,7 @@ private:
     }
   }
 
-  /// Helper functiont o signal errors while parsing, it takes an argument
+  /// Helper function to signal errors while parsing, it takes an argument
   /// indicanting the expected token and another argument giving more context.
   /// Location is retrieve from the lexer to enrich the error message.
   template <typename R, typename T, typename U = const char *>
