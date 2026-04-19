@@ -249,7 +249,7 @@ private:
         std::reverse(resultShape.begin(), resultShape.end());
         auto resultType =
             mlir::RankedTensorType::get(resultShape, builder.getF64Type());
-        
+
         if (lhsType != resultType) {
           lhs = BroadcastOp::create(builder, location, lhs, resultType);
         }
@@ -403,17 +403,17 @@ private:
   }
 
   /// Emit a call expression to the builtin 'print' function.
-  mlir::Value mlirGen(toy::PrintExprAST &call) {
+  llvm::LogicalResult mlirGen(toy::PrintExprAST &call) {
     auto location = loc(call.loc());
 
     // Codegen the operand first.
     auto arg = mlirGen(*call.getArg());
     if (!arg) {
-      return nullptr;
+      return mlir::failure();
     }
 
     PrintOp::create(builder, location, arg);
-    return nullptr;
+    return mlir::success();
   }
 
   /// Emit a constant for a single number.
@@ -436,8 +436,6 @@ private:
       return mlirGen(llvm::cast<toy::TransposeExprAST>(expr));
     case toy::ExprAST::ExprASTKind::Num:
       return mlirGen(llvm::cast<toy::NumberExprAST>(expr));
-    case toy::ExprAST::ExprASTKind::Print:
-      return mlirGen(llvm::cast<toy::PrintExprAST>(expr));
     case toy::ExprAST::ExprASTKind::VarDecl:
       return mlirGen(llvm::cast<toy::VarDeclExprAST>(expr));
     default:
@@ -489,8 +487,15 @@ private:
         return mlirGen(*ret);
       }
 
+      if (auto *print = llvm::dyn_cast<toy::PrintExprAST>(expr.get())) {
+        if (mlir::failed(mlirGen(*print))) {
+          return mlir::failure();
+        }
+        continue;
+      }
+
       auto value = mlirGen(*expr);
-      if (!value && expr->getKind() != toy::ExprAST::ExprASTKind::Print) {
+      if (!value) {
         return mlir::failure();
       }
     }
