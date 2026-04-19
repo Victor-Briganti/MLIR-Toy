@@ -177,6 +177,48 @@ llvm::LogicalResult ConstantOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// BroadcastOp
+//===----------------------------------------------------------------------===//
+
+llvm::LogicalResult BroadcastOp::verify() {
+  auto inType = llvm::dyn_cast<RankedTensorType>(getOperand().getType());
+  auto resType = llvm::dyn_cast<RankedTensorType>(getType());
+
+  if (!inType || !resType) {
+    return mlir::success();
+  }
+
+  auto inShape = inType.getShape();
+  auto resShape = resType.getShape();
+
+  // NumPy broadcasting rules:
+  // Compare shapes element-wise from right to left.
+  // Two dimensions are compatible when:
+  // 1. They are equal, or
+  // 2. one of them is 1.
+  if (resShape.size() < inShape.size()) {
+    return emitError() << "result rank must be >= input rank";
+  }
+
+  int i = static_cast<int>(inShape.size()) - 1;
+  int j = static_cast<int>(resShape.size()) - 1;
+
+  while (i >= 0) {
+    if (inShape[static_cast<size_t>(i)] != 1 &&
+        inShape[static_cast<size_t>(i)] != resShape[static_cast<size_t>(j)]) {
+      return emitError() << "input dimension " << i << " of size "
+                         << inShape[static_cast<size_t>(i)]
+                         << " is incompatible with result dimension " << j
+                         << " of size " << resShape[static_cast<size_t>(j)];
+    }
+    i--;
+    j--;
+  }
+
+  return mlir::success();
+}
+
+//===----------------------------------------------------------------------===//
 // AddOp
 //===----------------------------------------------------------------------===//
 

@@ -1,0 +1,23 @@
+# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+
+# CHECK-LABEL: toy.func @implicit_return
+def implicit_return() {
+  # CHECK: %[[CST:.*]] = toy.constant dense<1.000000e+00> : tensor<f64>
+  # CHECK: toy.return %[[CST]] : tensor<f64>
+  1.0;
+}
+
+# CHECK-LABEL: toy.func @implicit_return_print
+def implicit_return_print(a) {
+  # CHECK: toy.print %{{.*}} : tensor<*xf64>
+  # CHECK-NOT: toy.return %
+  # CHECK: toy.return
+  print(a);
+}
+
+# CHECK-LABEL: toy.func @main()
+def main() {
+  # CHECK: %[[RES:.*]] = toy.generic_call @implicit_return() : () -> tensor<*xf64>
+  # CHECK: toy.print %[[RES]] : tensor<*xf64>
+  print(implicit_return());
+}

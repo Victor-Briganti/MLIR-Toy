@@ -172,7 +172,6 @@ private:
     }
 
     // Implicitly return void if no return statement was emitted.
-    // FIXME: The parser needs to be fixed to always return the last expression.
     ReturnOp returnOp;
     if (!entryBlock.empty()) {
       returnOp = llvm::dyn_cast<ReturnOp>(entryBlock.back());
@@ -209,11 +208,57 @@ private:
     }
 
     mlir::Value rhs = mlirGen(*binop.getRhs());
-    if (!lhs) {
+    if (!rhs) {
       return nullptr;
     }
 
     auto location = loc(binop.loc());
+
+    // Reconcile the shapes of the two operands following NumPy broadcasting
+    // rules.
+    auto lhsType = llvm::dyn_cast<mlir::RankedTensorType>(lhs.getType());
+    auto rhsType = llvm::dyn_cast<mlir::RankedTensorType>(rhs.getType());
+
+    if (lhsType && rhsType && lhsType != rhsType) {
+      auto lhsShape = lhsType.getShape();
+      auto rhsShape = rhsType.getShape();
+
+      llvm::SmallVector<int64_t, 4> resultShape;
+      int i = static_cast<int>(lhsShape.size()) - 1;
+      int j = static_cast<int>(rhsShape.size()) - 1;
+      bool compatible = true;
+
+      while (i >= 0 || j >= 0) {
+        int64_t dim1 = (i >= 0) ? lhsShape[static_cast<size_t>(i)] : 1;
+        int64_t dim2 = (j >= 0) ? rhsShape[static_cast<size_t>(j)] : 1;
+        if (dim1 == dim2) {
+          resultShape.push_back(dim1);
+        } else if (dim1 == 1) {
+          resultShape.push_back(dim2);
+        } else if (dim2 == 1) {
+          resultShape.push_back(dim1);
+        } else {
+          compatible = false;
+          break;
+        }
+        i--;
+        j--;
+      }
+
+      if (compatible) {
+        std::reverse(resultShape.begin(), resultShape.end());
+        auto resultType =
+            mlir::RankedTensorType::get(resultShape, builder.getF64Type());
+        
+        if (lhsType != resultType) {
+          lhs = BroadcastOp::create(builder, location, lhs, resultType);
+        }
+
+        if (rhsType != resultType) {
+          rhs = BroadcastOp::create(builder, location, rhs, resultType);
+        }
+      }
+    }
 
     // Derive the operation name from the binary operator.
     switch (binop.getOp()) {
@@ -358,21 +403,20 @@ private:
   }
 
   /// Emit a call expression to the builtin 'print' function.
-  llvm::LogicalResult mlirGen(toy::PrintExprAST &call) {
+  mlir::Value mlirGen(toy::PrintExprAST &call) {
     auto location = loc(call.loc());
 
     // Codegen the operand first.
     auto arg = mlirGen(*call.getArg());
     if (!arg) {
-      return mlir::failure();
+      return nullptr;
     }
 
     PrintOp::create(builder, location, arg);
-    return mlir::success();
+    return nullptr;
   }
 
   /// Emit a constant for a single number.
-  /// FIXME: semantics? broadcast?
   mlir::Value mlirGen(toy::NumberExprAST &num) {
     return ConstantOp::create(builder, loc(num.loc()), num.getValue());
   }
@@ -392,6 +436,10 @@ private:
       return mlirGen(llvm::cast<toy::TransposeExprAST>(expr));
     case toy::ExprAST::ExprASTKind::Num:
       return mlirGen(llvm::cast<toy::NumberExprAST>(expr));
+    case toy::ExprAST::ExprASTKind::Print:
+      return mlirGen(llvm::cast<toy::PrintExprAST>(expr));
+    case toy::ExprAST::ExprASTKind::VarDecl:
+      return mlirGen(llvm::cast<toy::VarDeclExprAST>(expr));
     default:
       emitError(loc(expr.loc()))
           << "MLIR codegen encountered an unhandled expr kind '"
@@ -400,7 +448,7 @@ private:
     }
   }
 
-  /// Handle a variable declaration, we'll codegen teh expression that forms the
+  /// Handle a variable declaration, we'll codegen the expression that forms the
   /// initializer and record the value in the symbol table before returning it.
   /// Future expressions will be able to reference this variable through symbol
   /// table lookup.
@@ -437,36 +485,12 @@ private:
     llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> varScope(
         symbolTable);
     for (auto &expr : blockAST) {
-      // Specific handling for variable declarations, return statement, and
-      // print. These can only appear in block list and not in nested
-      // expressions.
-      if (auto *vardecl = llvm::dyn_cast<toy::VarDeclExprAST>(expr.get())) {
-        if (!mlirGen(*vardecl)) {
-          return mlir::failure();
-        }
-        continue;
-      }
-
       if (auto *ret = llvm::dyn_cast<toy::ReturnExprAST>(expr.get())) {
         return mlirGen(*ret);
       }
 
-      if (auto *print = llvm::dyn_cast<toy::PrintExprAST>(expr.get())) {
-        if (mlir::failed(mlirGen(*print))) {
-          return mlir::failure();
-        }
-        continue;
-      }
-
-      if (auto *transpose = llvm::dyn_cast<toy::TransposeExprAST>(expr.get())) {
-        if (!mlirGen(*transpose)) {
-          return mlir::failure();
-        }
-        continue;
-      }
-
-      // Generic expression dispatch codegen.
-      if (!mlirGen(*expr)) {
+      auto value = mlirGen(*expr);
+      if (!value && expr->getKind() != toy::ExprAST::ExprASTKind::Print) {
         return mlir::failure();
       }
     }

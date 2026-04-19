@@ -1,0 +1,49 @@
+# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+
+def main() {
+  var a<2, 3> = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
+  var b<2, 1> = [[10.0], [20.0]];
+  
+  # A (2x3) + B (2x1) -> Result (2x3)
+  # B needs to be broadcasted to (2x3)
+  # CHECK-LABEL: toy.func @main
+  # CHECK: %[[A_CST:.*]] = toy.constant dense<{{.*}}> : tensor<2x3xf64>
+  # CHECK: %[[A:.*]] = toy.reshape(%[[A_CST]]{{.*}}) to tensor<2x3xf64>
+  # CHECK: %[[B_CST:.*]] = toy.constant dense<{{.*}}> : tensor<2x1xf64>
+  # CHECK: %[[B:.*]] = toy.reshape(%[[B_CST]]{{.*}}) to tensor<2x1xf64>
+  # CHECK: %[[B_BROADCAST:.*]] = toy.broadcast(%[[B]] : tensor<2x1xf64>) to tensor<2x3xf64>
+  # CHECK: toy.add %[[A]], %[[B_BROADCAST]] : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+  var c = a + b;
+  print(c);
+
+  # A (2x3) + 1.0 (scalar) -> Result (2x3)
+  # 1.0 needs to be broadcasted to (2x3)
+  # CHECK: %[[SCALAR:.*]] = toy.constant dense<1.000000e+00> : tensor<f64>
+  # CHECK: %[[S_BROADCAST:.*]] = toy.broadcast(%[[SCALAR]] : tensor<f64>) to tensor<2x3xf64>
+  # CHECK: toy.add %[[A]], %[[S_BROADCAST]] : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+  var d = a + 1.0;
+  print(d);
+}
+
+def complex_broadcast() {
+  # A (4d array): 8 x 1 x 6 x 1
+  # B (3d array): 7 x 1 x 5
+  # Result (4d array): 8 x 7 x 6 x 5
+  # This test just verifies that the compiler generates compatible shapes.
+  # Since Toy doesn't easily support 4D literals in a simple way without deep nesting,
+  # we'll just test a 2D vs 1D case that uses the same logic.
+  
+  var a<1, 6> = [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]];
+  var b<3, 1> = [[10.0], [20.0], [30.0]];
+  
+  # A (1x6) + B (3x1) -> Result (3x6)
+  # CHECK-LABEL: toy.func @complex_broadcast
+  # CHECK: %[[AC_CST:.*]] = toy.constant dense<{{.*}}> : tensor<1x6xf64>
+  # CHECK: %[[AC:.*]] = toy.reshape(%[[AC_CST]]{{.*}}) to tensor<1x6xf64>
+  # CHECK: %[[BC_CST:.*]] = toy.constant dense<{{.*}}> : tensor<3x1xf64>
+  # CHECK: %[[BC:.*]] = toy.reshape(%[[BC_CST]]{{.*}}) to tensor<3x1xf64>
+  # CHECK-DAG: %[[AC_BROADCAST:.*]] = toy.broadcast(%[[AC]] : tensor<1x6xf64>) to tensor<3x6xf64>
+  # CHECK-DAG: %[[BC_BROADCAST:.*]] = toy.broadcast(%[[BC]] : tensor<3x1xf64>) to tensor<3x6xf64>
+  # CHECK: toy.add %[[AC_BROADCAST]], %[[BC_BROADCAST]] : (tensor<3x6xf64>, tensor<3x6xf64>) -> tensor<*xf64>
+  print(a + b);
+}
