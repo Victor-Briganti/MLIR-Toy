@@ -7,3 +7,11 @@
 def transpose_transpose(x) {
   return transpose(transpose(x));
 }
+
+# CHECK-LABEL: toy.func @transpose_nested(
+# CHECK-SAME:                                %[[ARG0:.*]]: tensor<*xf64>) -> tensor<*xf64> {
+# CHECK-NEXT:    toy.return %[[ARG0]] : tensor<*xf64>
+# CHECK-NEXT:  }
+def transpose_nested(x) {
+  return transpose(transpose(transpose(transpose(transpose(transpose(x))))));
+}
