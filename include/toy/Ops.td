@@ -36,6 +36,35 @@ class Toy_Op<string mnemonic, list<Trait> traits = []> :
 Op<Toy_Dialect, mnemonic, traits>;
 
 //===----------------------------------------------------------------------===//
+// BroadcastOp
+//===----------------------------------------------------------------------===//
+
+def BroadcastOp : Toy_Op<"broadcast"> {
+  let summary = "broadcast operation";
+  let description = [{
+    The "broadcast" operation broadcasts the input tensor to a new shape.
+    This follows the same semantics as the numpy broadcast.
+  }];
+
+  let arguments = (ins F64Tensor:$input);
+  let results = (outs F64Tensor);
+
+  let assemblyFormat = [{
+    `(` $input `:` type($input) `)` attr-dict `to` type(results)
+  }];
+
+  // Allow building a BroadcastOp from the input operand and the result type.
+  let builders = [
+    OpBuilder<(ins "Value":$input, "Type":$resultType), [{
+      $_state.addOperands(input);
+      $_state.addTypes(resultType);
+    }]>
+  ];
+
+  let hasVerifier = 1;
+}
+
+//===----------------------------------------------------------------------===//
 // ConstantOp
 //===----------------------------------------------------------------------===//
 

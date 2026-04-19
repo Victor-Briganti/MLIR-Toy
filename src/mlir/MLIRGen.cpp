@@ -209,11 +209,57 @@ private:
     }
 
     mlir::Value rhs = mlirGen(*binop.getRhs());
-    if (!lhs) {
+    if (!rhs) {
       return nullptr;
     }
 
     auto location = loc(binop.loc());
+
+    // Reconcile the shapes of the two operands following NumPy broadcasting
+    // rules.
+    auto lhsType = llvm::dyn_cast<mlir::RankedTensorType>(lhs.getType());
+    auto rhsType = llvm::dyn_cast<mlir::RankedTensorType>(rhs.getType());
+
+    if (lhsType && rhsType && lhsType != rhsType) {
+      auto lhsShape = lhsType.getShape();
+      auto rhsShape = rhsType.getShape();
+
+      llvm::SmallVector<int64_t, 4> resultShape;
+      int i = static_cast<int>(lhsShape.size()) - 1;
+      int j = static_cast<int>(rhsShape.size()) - 1;
+      bool compatible = true;
+
+      while (i >= 0 || j >= 0) {
+        int64_t dim1 = (i >= 0) ? lhsShape[static_cast<size_t>(i)] : 1;
+        int64_t dim2 = (j >= 0) ? rhsShape[static_cast<size_t>(j)] : 1;
+        if (dim1 == dim2) {
+          resultShape.push_back(dim1);
+        } else if (dim1 == 1) {
+          resultShape.push_back(dim2);
+        } else if (dim2 == 1) {
+          resultShape.push_back(dim1);
+        } else {
+          compatible = false;
+          break;
+        }
+        i--;
+        j--;
+      }
+
+      if (compatible) {
+        std::reverse(resultShape.begin(), resultShape.end());
+        auto resultType =
+            mlir::RankedTensorType::get(resultShape, builder.getF64Type());
+        
+        if (lhsType != resultType) {
+          lhs = BroadcastOp::create(builder, location, lhs, resultType);
+        }
+
+        if (rhsType != resultType) {
+          rhs = BroadcastOp::create(builder, location, rhs, resultType);
+        }
+      }
+    }
 
     // Derive the operation name from the binary operator.
     switch (binop.getOp()) {
@@ -372,7 +418,6 @@ private:
   }
 
   /// Emit a constant for a single number.
-  /// FIXME: semantics? broadcast?
   mlir::Value mlirGen(toy::NumberExprAST &num) {
     return ConstantOp::create(builder, loc(num.loc()), num.getValue());
   }
