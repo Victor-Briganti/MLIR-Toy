@@ -22,6 +22,11 @@
 
 using namespace mlir;
 
+namespace {
+/// Include the patterns defined in the Declarative Rewrite framework.
+#include "ToyCombine.cpp.inc"
+} // namespace
+
 /// This is an example of a C++ rewrite pattern for the TransposeOs. It
 /// optimizes teh following scenarios: tranpose(transpose(x)) -> x
 struct SimplifyRedundantTranspose
@@ -55,8 +60,15 @@ struct SimplifyRedundantTranspose
 };
 
 /// Register our patterns as "canonicalization" patterns on the TranposeOp so
-/// taht they can be picked up by Canonicalization framework.
+/// that they can be picked up by Canonicalization framework.
 void toy::TransposeOp::getCanonicalizationPatterns(
     mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
   results.add<SimplifyRedundantTranspose>(context);
+}
+
+/// Register our patterns as "canonicalization" patterns on the ReshapeOp so
+/// that they can be picked up by Canonicalization framework.
+void toy::ReshapeOp::getCanonicalizationPatterns(
+    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
+  results.add<ReshapeReshapeOpPattern>(context);
 }

@@ -10,23 +10,6 @@ target_link_libraries(
   PRIVATE
   mlirtoy_options
   mlirtoy_warnings)
-target_include_directories(
-  AST
-  ${WARNING_GUARD}
-  PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
-target_compile_features(
-  AST
-  PUBLIC
-  cxx_std_${CMAKE_CXX_STANDARD})
-set_target_properties(
-  AST
-  PROPERTIES
-  VERSION
-  ${PROJECT_VERSION}
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN YES)
 
 # --------------------------------------------------------------------------- #
 # Dialect
@@ -48,23 +31,6 @@ target_link_libraries(
   PRIVATE
   mlirtoy_options
   mlirtoy_warnings)
-target_include_directories(
-  Dialect
-  ${WARNING_GUARD}
-  PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
-target_compile_features(
-  Dialect
-  PUBLIC
-  cxx_std_${CMAKE_CXX_STANDARD})
-set_target_properties(
-  Dialect
-  PROPERTIES
-  VERSION
-  ${PROJECT_VERSION}
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN YES)
 
 # --------------------------------------------------------------------------- #
 # MLIRGen
@@ -84,23 +50,15 @@ target_link_libraries(
   PRIVATE
   mlirtoy_options
   mlirtoy_warnings)
-target_include_directories(
-  MLIRGen
-  ${WARNING_GUARD}
-  PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
-target_compile_features(
-  MLIRGen
-  PUBLIC
-  cxx_std_${CMAKE_CXX_STANDARD})
-set_target_properties(
-  MLIRGen
-  PROPERTIES
-  VERSION
-  ${PROJECT_VERSION}
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN YES)
+
+# --------------------------------------------------------------------------- #
+# ToyCombine Tablegen
+# --------------------------------------------------------------------------- #
+
+# TableGen needs the project include directory to find toy/Ops.td
+set(LLVM_TARGET_DEFINITIONS mlir/ToyCombine.td)
+mlir_tablegen(ToyCombine.cpp.inc -gen-rewriters "-I${PROJECT_SOURCE_DIR}/include")
+add_public_tablegen_target(ToyCombineIncGen)
 
 # --------------------------------------------------------------------------- #
 # ToyCombine
@@ -114,26 +72,15 @@ mlirtoy_link_mlir_libs(
   MLIRIR
   MLIRParser
   MLIRSupport)
-add_dependencies(ToyCombine ToyOpIncGen) # ToyOpIncGen needs to be build first
+add_dependencies(ToyCombine ToyOpIncGen ToyCombineIncGen)
 target_link_libraries(
   ToyCombine
   PRIVATE
   mlirtoy_options
   mlirtoy_warnings)
+
+# Add the binary directory for the generated .inc files
 target_include_directories(
   ToyCombine
-  ${WARNING_GUARD}
-  PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
-target_compile_features(
-  ToyCombine
-  PUBLIC
-  cxx_std_${CMAKE_CXX_STANDARD})
-set_target_properties(
-  ToyCombine
-  PROPERTIES
-  VERSION
-  ${PROJECT_VERSION}
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN YES)
+  PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)

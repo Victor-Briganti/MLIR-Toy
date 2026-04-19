@@ -1,0 +1,11 @@
+# RUN: toy-compiler %s --opt -emit=mlir 2>&1 | FileCheck %s
+
+# CHECK-LABEL: toy.func @reshape_nested
+def reshape_nested(a) {
+  # CHECK: %[[VAR0:.*]] = toy.reshape({{.*}}) to tensor<3x2xf64>
+  # CHECK: toy.return %[[VAR0]] : tensor<3x2xf64>
+  var b<2, 3> = a;
+  var c<6> = b;
+  var d<3, 2> = c;
+  return d;
+}

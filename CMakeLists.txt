@@ -22,6 +22,11 @@ set(WARNING_GUARD SYSTEM)
 
 # Configure the project with the cxx_standard that we had set
 target_compile_features(mlirtoy_options INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
+target_include_directories(
+  mlirtoy_options
+  INTERFACE
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
 mlirtoy_enable_clang_tidy(mlirtoy_options ON)
 
 # Add the warnings configuration to the project
