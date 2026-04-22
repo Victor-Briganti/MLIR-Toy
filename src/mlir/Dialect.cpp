@@ -23,15 +23,69 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Location.h>
 #include <mlir/IR/OpImplementation.h>
+#include <mlir/IR/Operation.h>
 #include <mlir/IR/OperationSupport.h>
+#include <mlir/IR/Region.h>
 #include <mlir/IR/Types.h>
+#include <mlir/IR/ValueRange.h>
+#include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/FunctionImplementation.h>
 #include <mlir/Support/LLVM.h>
+#include <mlir/Transforms/InliningUtils.h>
 
 using namespace mlir::toy;
 
 #include "toy/Dialect.cpp.inc"
+
+//===----------------------------------------------------------------------===//
+// ToyInlinerInterface
+//===----------------------------------------------------------------------===//
+
+/// This class defines the interface for handling inlining with Toy operations.
+struct ToyInlinerInterface : public mlir::DialectInlinerInterface {
+  using mlir::DialectInlinerInterface::DialectInlinerInterface;
+
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // Analysis Hooks
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  /// All call operations within toy can be inlined.
+  bool isLegalToInline(mlir::Operation *, mlir::Operation *, bool) const final {
+    return true;
+  }
+
+  /// All functions within toy ca be inlined.
+  bool isLegalToInline(mlir::Region *, mlir::Region *, bool,
+                       mlir::IRMapping &) const final {
+    return true;
+  }
+
+  /// All operations within toy can be inlined.
+  bool isLegalToInline(mlir::Operation *, mlir::Region *, bool,
+                       mlir::IRMapping &) const final {
+    return true;
+  }
+
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // Transformation Hooks
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  /// Handle the given inlined terminator(toy.return) by replacing it with a new
+  /// operation as necessary.
+  void handleTerminator(mlir::Operation *op,
+                        mlir::ValueRange valuesToRepl) const final {
+    // Only "toy.return" needs to be handled here.
+    auto returnOp = llvm::cast<ReturnOp>(op);
+
+    // Replace the value directly with the return operands.
+    assert(returnOp.getNumOperands() == valuesToRepl.size());
+    for (const auto &it : llvm::enumerate(returnOp.getOperands())) {
+      valuesToRepl[it.index()].replaceAllUsesWith(it.value());
+    }
+  }
+};
 
 //===----------------------------------------------------------------------===//
 // ToyDialect
@@ -44,6 +98,7 @@ void ToyDialect::initialize() {
 #define GET_OP_LIST
 #include "toy/Ops.cpp.inc"
       >();
+  addInterface<ToyInlinerInterface>();
 }
 
 //===----------------------------------------------------------------------===//
@@ -301,6 +356,30 @@ void GenericCallOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
   state.addOperands(arguments);
   state.addAttribute("callee",
                      mlir::SymbolRefAttr::get(builder.getContext(), callee));
+}
+
+/// Return the callee of the generic call operation, this isrequired by the call
+/// interface.
+mlir::CallInterfaceCallable GenericCallOp::getCallableForCallee() {
+  return (*this)->getAttrOfType<SymbolRefAttr>("callee");
+}
+
+/// Set the callee for the generic call operation, this is required by the call
+/// interface.
+void GenericCallOp::setCalleeFromCallable(mlir::CallInterfaceCallable callee) {
+  return (*this)->setAttr("callee", callee.dyn_cast<SymbolRefAttr>());
+}
+
+/// Get the argument operands to the called function, this is required by the
+/// call interface.
+mlir::Operation::operand_range GenericCallOp::getArgOperands() {
+  return getInputs();
+}
+
+/// Get the argument operands to the called function as a mutable range, rthis
+/// is required by teh call interface.
+mlir::MutableOperandRange GenericCallOp::getArgOperandsMutable() {
+  return getInputsMutable();
 }
 
 //===----------------------------------------------------------------------===//

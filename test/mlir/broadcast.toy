@@ -37,7 +37,7 @@ def complex_broadcast() {
   var b<3, 1> = [[10.0], [20.0], [30.0]];
   
   # A (1x6) + B (3x1) -> Result (3x6)
-  # CHECK-LABEL: toy.func @complex_broadcast
+  # CHECK-LABEL: toy.func private @complex_broadcast
   # CHECK: %[[AC_CST:.*]] = toy.constant dense<{{.*}}> : tensor<1x6xf64>
   # CHECK: %[[AC:.*]] = toy.reshape(%[[AC_CST]]{{.*}}) to tensor<1x6xf64>
   # CHECK: %[[BC_CST:.*]] = toy.constant dense<{{.*}}> : tensor<3x1xf64>

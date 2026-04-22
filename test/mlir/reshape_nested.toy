@@ -1,11 +1,12 @@
 # RUN: toy-compiler %s --opt -emit=mlir 2>&1 | FileCheck %s
 
-# CHECK-LABEL: toy.func @reshape_constant
-def reshape_constant(a) {
-  # CHECK: %[[VAR0:.*]] = toy.reshape({{.*}}) to tensor<3x2xf64>
-  # CHECK: toy.return %[[VAR0]] : tensor<3x2xf64>
+# CHECK-LABEL: toy.func @main
+def main() {
+  # CHECK: %[[VAR0:.*]] = toy.constant dense<{{.*}}> : tensor<3x2xf64>
+  var a = [[1, 2], [1, 2], [1, 2]];
   var b<2, 3> = a;
   var c<6> = b;
   var d<3, 2> = c;
+  # CHECK: toy.return %[[VAR0]] : tensor<3x2xf64>
   return d;
 }
