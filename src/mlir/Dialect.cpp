@@ -16,6 +16,8 @@
 #include "toy/Dialect.h"
 
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/LogicalResult.h>
@@ -28,7 +30,9 @@
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/Region.h>
+#include <mlir/IR/TypeRange.h>
 #include <mlir/IR/Types.h>
+#include <mlir/IR/Value.h>
 #include <mlir/IR/ValueRange.h>
 #include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/FunctionImplementation.h>
@@ -84,6 +88,18 @@ struct ToyInlinerInterface : public mlir::DialectInlinerInterface {
     for (const auto &it : llvm::enumerate(returnOp.getOperands())) {
       valuesToRepl[it.index()].replaceAllUsesWith(it.value());
     }
+  }
+
+  /// Attempts to materialize a conversion for a type mismatch between a call
+  /// from this dialect, and a callable region. This method should generate an
+  /// operation that takes 'input' as the only operand, and produces a single
+  /// result of 'resultType'. If a conversion can not be generated, nullptr
+  /// should be returned.
+  mlir::Operation *
+  materializeCallConversion(mlir::OpBuilder &builder, mlir::Value input,
+                            mlir::Type resultType,
+                            mlir::Location conversionLoc) const final {
+    return CastOp::create(builder, conversionLoc, resultType, input);
   }
 };
 
@@ -235,6 +251,12 @@ llvm::LogicalResult ConstantOp::verify() {
 // BroadcastOp
 //===----------------------------------------------------------------------===//
 
+void BroadcastOp::inferShape() {
+  auto arrayTy = llvm::cast<RankedTensorType>(getOperand().getType());
+  llvm::SmallVector<int64_t, 2> dims(llvm::reverse(arrayTy.getShape()));
+  getResult().setType(RankedTensorType::get(dims, arrayTy.getElementType()));
+}
+
 llvm::LogicalResult BroadcastOp::verify() {
   auto inType = llvm::dyn_cast<RankedTensorType>(getOperand().getType());
   auto resType = llvm::dyn_cast<RankedTensorType>(getType());
@@ -290,6 +312,8 @@ mlir::ParseResult AddOp::parse(mlir::OpAsmParser &parser,
 
 void AddOp::print(mlir::OpAsmPrinter &p) { printBinaryOp(p, *this); }
 
+void AddOp::inferShape() { getResult().setType(getLhs().getType()); }
+
 //===----------------------------------------------------------------------===//
 // MulOp
 //===----------------------------------------------------------------------===//
@@ -306,6 +330,34 @@ mlir::ParseResult MulOp::parse(mlir::OpAsmParser &parser,
 }
 
 void MulOp::print(mlir::OpAsmPrinter &p) { printBinaryOp(p, *this); }
+
+void MulOp::inferShape() { getResult().setType(getLhs().getType()); }
+
+//===----------------------------------------------------------------------===//
+// CastOp
+//===----------------------------------------------------------------------===//
+
+void CastOp::inferShape() { getResult().setType(getInput().getType()); }
+
+/// Returns true if the given set of input and result types are compatible with
+/// this cast operation. This is required by the `CastOpInferface` to verify
+/// this operation and provide other additional utilities.
+bool CastOp::areCastCompatible(mlir::TypeRange inputs,
+                               mlir::TypeRange outputs) {
+  if (inputs.size() != 1 || outputs.size() != 1) {
+    return false;
+  }
+
+  // The inputs must be Tensors with the same element type.
+  auto input = llvm::dyn_cast<TensorType>(inputs.front());
+  auto output = llvm::dyn_cast<TensorType>(outputs.front());
+  if (!input || !output || input.getElementType() != output.getElementType()) {
+    return false;
+  }
+
+  // The shape is required to match if both types are ranked
+  return !input.hasRank() || !output.hasRank() || input == output;
+}
 
 //===----------------------------------------------------------------------===//
 // FuncOp
@@ -431,6 +483,12 @@ void TransposeOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
                         mlir::Value input) {
   state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
   state.addOperands(input);
+}
+
+void TransposeOp::inferShape() {
+  auto arrayTy = llvm::cast<RankedTensorType>(getOperand().getType());
+  llvm::SmallVector<int64_t, 2> dims(llvm::reverse(arrayTy.getShape()));
+  getResult().setType(RankedTensorType::get(dims, arrayTy.getElementType()));
 }
 
 llvm::LogicalResult TransposeOp::verify() {

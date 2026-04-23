@@ -24,6 +24,7 @@ mlirtoy_link_mlir_libs(
   MLIRIR
   MLIRSideEffectInterfaces
   MLIRCallInterfaces
+  MLIRCastInterfaces
   MLIRFunctionInterfaces
   MLIRBytecodeReader)
 target_link_libraries(
@@ -72,7 +73,11 @@ mlirtoy_link_mlir_libs(
   MLIRIR
   MLIRParser
   MLIRSupport)
-add_dependencies(ToyCombine ToyOpIncGen ToyCombineIncGen)
+add_dependencies(
+  ToyCombine
+  ToyOpIncGen
+  ToyCombineIncGen
+  ToyShapeInferenceInterfaceIncGen)
 target_link_libraries(
   ToyCombine
   PRIVATE
