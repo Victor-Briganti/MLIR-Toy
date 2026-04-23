@@ -1,15 +1,20 @@
 # RUN: toy-compiler %s --opt -emit=mlir 2>&1 | FileCheck %s
 
-# CHECK-LABEL: toy.func @transpose_transpose(
-# CHECK-SAME:                                %[[ARG0:.*]]: tensor<*xf64>
-# CHECK-NEXT:    toy.return %[[ARG0]] : tensor<*xf64>
 def transpose_transpose(x) {
   return transpose(transpose(x));
 }
 
-# CHECK-LABEL: toy.func @transpose_nested(
-# CHECK-SAME:                                %[[ARG0:.*]]: tensor<*xf64>
-# CHECK-NEXT:    toy.return %[[ARG0]] : tensor<*xf64>
 def transpose_nested(x) {
   return transpose(transpose(transpose(transpose(transpose(transpose(x))))));
+}
+
+# CHECK-LABEL: toy.func @main
+def main() {
+  # CHECK: %[[CONST0:.*]] = toy.constant dense<{{\[\[.*\]\]}}>
+  var a = [[[1, 2, 3], [2, 4, 6]], [[7, 8, 9], [12, 13, 15]]];
+  var x = transpose_transpose(a);
+  var y = transpose_nested(a);
+  # CHECK: %[[CONST1:.*]] = toy.add %[[CONST0]], %[[CONST0]]
+  # CHECK: toy.return %[[CONST1]]
+  return x + y;
 }

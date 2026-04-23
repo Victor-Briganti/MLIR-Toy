@@ -24,6 +24,7 @@ mlirtoy_link_mlir_libs(
   MLIRIR
   MLIRSideEffectInterfaces
   MLIRCallInterfaces
+  MLIRCastInterfaces
   MLIRFunctionInterfaces
   MLIRBytecodeReader)
 target_link_libraries(
@@ -52,6 +53,25 @@ target_link_libraries(
   mlirtoy_warnings)
 
 # --------------------------------------------------------------------------- #
+# Shape Inference Pass
+# --------------------------------------------------------------------------- #
+
+add_library(ShapeInferencePass mlir/ShapeInferencePass.cpp)
+add_library(mlirtoy::ShapeInferencePass ALIAS ShapeInferencePass)
+mlirtoy_link_llvm_components(ShapeInferencePass)
+mlirtoy_link_mlir_libs(
+  ShapeInferencePass
+  MLIRIR
+  MLIRParser
+  MLIRSupport)
+add_dependencies(ShapeInferencePass ToyOpIncGen)
+target_link_libraries(
+  ShapeInferencePass
+  PRIVATE
+  mlirtoy_options
+  mlirtoy_warnings)
+
+# --------------------------------------------------------------------------- #
 # ToyCombine Tablegen
 # --------------------------------------------------------------------------- #
 
@@ -72,7 +92,11 @@ mlirtoy_link_mlir_libs(
   MLIRIR
   MLIRParser
   MLIRSupport)
-add_dependencies(ToyCombine ToyOpIncGen ToyCombineIncGen)
+add_dependencies(
+  ToyCombine
+  ToyOpIncGen
+  ToyCombineIncGen
+  ToyShapeInferenceInterfaceIncGen)
 target_link_libraries(
   ToyCombine
   PRIVATE

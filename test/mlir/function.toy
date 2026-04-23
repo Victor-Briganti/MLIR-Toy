@@ -1,6 +1,6 @@
 # RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
 
-# CHECK-LABEL: toy.func @multiply_transpose
+# CHECK-LABEL: toy.func private @multiply_transpose
 # CHECK-SAME: (%[[ARG0:.*]]: tensor<*xf64>, %[[ARG1:.*]]: tensor<*xf64>)
 def multiply_transpose(a, b) {
   # CHECK: %[[T0:.*]] = toy.transpose(%[[ARG0]] : tensor<*xf64>) to tensor<*xf64>

@@ -19,6 +19,7 @@ target_link_libraries(
   mlirtoy::Dialect
   mlirtoy::MLIRGen
   mlirtoy::ToyCombine
+  mlirtoy::ShapeInferencePass
   mlirtoy_options
   mlirtoy_warnings)
 target_include_directories(

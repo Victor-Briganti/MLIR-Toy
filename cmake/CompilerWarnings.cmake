@@ -8,8 +8,6 @@ function(mlirtoy_set_project_warnings project_name)
       -Wcast-align           # warn for potential performance problem casts
       -Woverloaded-virtual   # warn if you overload (not override) a virtual function
       -Wpedantic             # warn if non-standard C++ is used
-      -Wconversion           # warn on type conversions that may lose data
-      -Wsign-conversion      # warn on sign conversions
       -Wnull-dereference     # warn if a null dereference is detected
       -Wdouble-promotion     # warn if float is implicit promoted to double
       -Wformat=2             # warn on security issues around formatting functions (printf)
@@ -18,6 +16,8 @@ function(mlirtoy_set_project_warnings project_name)
       # Disable this flags because of the code generation on MLIR
       #-Wshadow               # warn if variable declaration shadows one from a parent context
       #-Wunused               # warn on anything being unused
+      # -Wsign-conversion      # warn on sign conversions
+      # -Wconversion           # warn on type conversions that may lose data
   )
 
   # 2. Warnings exclusive to GCC
