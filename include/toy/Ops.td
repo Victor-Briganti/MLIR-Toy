@@ -122,7 +122,8 @@ def ConstantOp : Toy_Op<"constant", [Pure]> {
 // AddOp
 //===----------------------------------------------------------------------===//
 
-def AddOp : Toy_Op<"add", [DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+def AddOp : Toy_Op<"add", 
+                [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "element-wise addition operaiton";
   let description = [{
     The "add" operation performs element-wise addition between two tensors.
@@ -270,7 +271,7 @@ def GenericCallOp : Toy_Op<"generic_call",
 //===----------------------------------------------------------------------===//
 
 def MulOp : Toy_Op<"mul", 
-                   [DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+                [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "element-wise multiplication operation";
   let description = [{
     The "mul" operation performs element-wise multplication between two

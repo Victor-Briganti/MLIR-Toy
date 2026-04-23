@@ -13,8 +13,10 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(Catch2)
+set(LIT_EXECUTABLE "lit")
 
 # Include subdirectories for different test types
 add_subdirectory(lexer)
 add_subdirectory(parser)
+add_subdirectory(toy)
 add_subdirectory(mlir)

@@ -1,9 +1,9 @@
 import os
 import lit.formats
 
-config.name = 'Toy'
+config.name = 'MLIR'
 config.test_format = lit.formats.ShTest(True)
-config.suffixes = ['.toy']
+config.suffixes = ['.mlir']
 
 # Define where to look for the tests
 config.test_source_root = os.path.dirname(__file__)
