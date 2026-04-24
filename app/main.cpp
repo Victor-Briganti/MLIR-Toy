@@ -51,12 +51,13 @@ static cl::opt<InputType>
     );
 
 namespace {
-enum class Action { None, DumpAST, DumpMLIR };
+enum class Action { None, DumpAST, DumpToyMLIR };
 } // namespace
 static cl::opt<Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
     cl::values(clEnumValN(Action::DumpAST, "ast", "output the AST dump")),
-    cl::values(clEnumValN(Action::DumpMLIR, "mlir", "output the MLIR dump")));
+    cl::values(clEnumValN(Action::DumpToyMLIR, "mlir-toy",
+                          "output the MLIR Toy dialect dump")));
 
 static cl::opt<bool>
     enableOpt("opt", cl::desc("Enable the optimizations in code generation"));
@@ -113,7 +114,7 @@ static int loadMLIR(llvm::SourceMgr &sourceMgr, mlir::MLIRContext &context,
   return 0;
 }
 
-static int dumpMLIR() {
+static int dumpToyMLIR() {
   mlir::MLIRContext context;
   // Load our Dialect in this MLIR Context
   context.getOrLoadDialect<mlir::toy::ToyDialect>();
@@ -174,8 +175,8 @@ int main(int argc, char **argv) {
   switch (emitAction) {
   case Action::DumpAST:
     return dumpAST();
-  case Action::DumpMLIR:
-    return dumpMLIR();
+  case Action::DumpToyMLIR:
+    return dumpToyMLIR();
   default:
     llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
   }
