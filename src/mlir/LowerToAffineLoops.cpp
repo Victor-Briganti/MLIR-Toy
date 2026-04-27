@@ -63,7 +63,7 @@ static mlir::Value insertAllocAndDealloc(mlir::MemRefType type,
                                          mlir::Location loc,
                                          mlir::PatternRewriter &rewriter) {
   auto alloc = rewriter.create<mlir::memref::AllocaOp>(loc, type);
-  auto dealloc = rewriter.create<mlir::memref::AllocaOp>(loc, type);
+  auto dealloc = rewriter.create<mlir::memref::DeallocOp>(loc, alloc);
 
   // Make sure to allocate at the beginning of the block.
   auto *parentBlock = alloc->getBlock();
@@ -71,7 +71,7 @@ static mlir::Value insertAllocAndDealloc(mlir::MemRefType type,
 
   // Make sure to deallocate at the end of the block.
   // NOTE: This is only fine because the Toy language has no control flow.
-  dealloc->moveAfter(&parentBlock->front());
+  dealloc->moveBefore(&parentBlock->back());
 
   return alloc;
 }
@@ -351,7 +351,7 @@ struct ToyToAffineLoweringPass
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ToyToAffineLoweringPass)
   llvm::StringRef getArgument() const override { return "toy-to-affine"; }
 
-  void getDependedndDialects(mlir::DialectRegistry &registry) const {
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {
     registry.insert<affine::AffineDialect, func::FuncDialect,
                     memref::MemRefDialect>();
   }
