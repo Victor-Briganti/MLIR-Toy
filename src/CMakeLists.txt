@@ -108,3 +108,36 @@ target_include_directories(
   ToyCombine
   PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+
+# --------------------------------------------------------------------------- #
+# Lowering to Affine
+# --------------------------------------------------------------------------- #
+
+add_library(LowerToAffineLoops mlir/LowerToAffineLoops.cpp)
+add_library(mlirtoy::LowerToAffineLoops ALIAS LowerToAffineLoops)
+mlirtoy_link_llvm_components(LowerToAffineLoops)
+mlirtoy_link_mlir_libs(
+  LowerToAffineLoops
+  MLIRAffineDialect
+  MLIRArithDialect
+  MLIRFuncDialect
+  MLIRIR
+  MLIRMemRefDialect
+  MLIRParser
+  MLIRSupport)
+add_dependencies(
+  LowerToAffineLoops
+  ToyOpIncGen
+  ToyCombineIncGen
+  ToyShapeInferenceInterfaceIncGen)
+target_link_libraries(
+  LowerToAffineLoops
+  PRIVATE
+  mlirtoy_options
+  mlirtoy_warnings)
+
+# Add the binary directory for the generated .inc files
+target_include_directories(
+  LowerToAffineLoops
+  PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
