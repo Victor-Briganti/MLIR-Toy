@@ -1,4 +1,4 @@
-# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+# RUN: toy-compiler %s --emit=mlir-toy 2>&1 | FileCheck %s
 
 # CHECK-LABEL: toy.func private @multiply_transpose
 # CHECK-SAME: (%[[ARG0:.*]]: tensor<*xf64>, %[[ARG1:.*]]: tensor<*xf64>)

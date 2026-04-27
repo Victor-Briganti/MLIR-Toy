@@ -1,4 +1,4 @@
-# RUN: toy-compiler %s -emit=mlir 2>&1 | FileCheck %s
+# RUN: toy-compiler %s --emit=mlir-toy 2>&1 | FileCheck %s
 
 def main() {
   var a<2, 3> = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];

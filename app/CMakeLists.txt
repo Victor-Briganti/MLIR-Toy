@@ -4,9 +4,14 @@ add_executable(mlirtoy::main ALIAS main)
 mlirtoy_link_llvm_components(main Support Core)
 mlirtoy_link_mlir_libs(
   main
+  MLIRAffineDialect
+  MLIRAffineTransforms
   MLIRAnalysis
+  MLIRArithDialect
+  MLIRFuncDialect
   MLIRFunctionInterfaces
   MLIRIR
+  MLIRMemRefDialect
   MLIRParser
   MLIRPass
   MLIRSideEffectInterfaces
@@ -20,6 +25,7 @@ target_link_libraries(
   mlirtoy::MLIRGen
   mlirtoy::ToyCombine
   mlirtoy::ShapeInferencePass
+  mlirtoy::LowerToAffineLoops
   mlirtoy_options
   mlirtoy_warnings)
 target_include_directories(

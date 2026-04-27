@@ -1,15 +1,16 @@
 //===--- main.cpp - The Toy Compiler --------------------------------------===//
 //
+// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// Modified by: Victor Briganti in 2026
+//
+//===----------------------------------------------------------------------===//
+//
 // This file implements the entry point for the Toy compiler.
 //
 //===----------------------------------------------------------------------===//
-
-#include "toy/AST.h"
-#include "toy/Dialect.h"
-#include "toy/Lexer.h"
-#include "toy/MLIRGen.h"
-#include "toy/Parser.h"
-#include "toy/Passes.h"
 
 #include <memory>
 #include <string>
@@ -21,6 +22,8 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include <mlir/Dialect/Affine/Passes.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/AsmState.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
@@ -28,6 +31,13 @@
 #include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Transforms/Passes.h>
+
+#include "toy/AST.h"
+#include "toy/Dialect.h"
+#include "toy/Lexer.h"
+#include "toy/MLIRGen.h"
+#include "toy/Parser.h"
+#include "toy/Passes.h"
 
 using namespace toy;
 namespace cl = llvm::cl;
@@ -51,12 +61,15 @@ static cl::opt<InputType>
     );
 
 namespace {
-enum class Action { None, DumpAST, DumpMLIR };
+enum class Action { None, DumpAST, DumpToyMLIR, DumpAffineMLIR };
 } // namespace
 static cl::opt<Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
     cl::values(clEnumValN(Action::DumpAST, "ast", "output the AST dump")),
-    cl::values(clEnumValN(Action::DumpMLIR, "mlir", "output the MLIR dump")));
+    cl::values(clEnumValN(Action::DumpToyMLIR, "mlir-toy",
+                          "output the MLIR Toy dialect dump")),
+    cl::values(clEnumValN(Action::DumpAffineMLIR, "mlir-affine",
+                          "output the MLIR Affine dialect dump")));
 
 static cl::opt<bool>
     enableOpt("opt", cl::desc("Enable the optimizations in code generation"));
@@ -113,7 +126,7 @@ static int loadMLIR(llvm::SourceMgr &sourceMgr, mlir::MLIRContext &context,
   return 0;
 }
 
-static int dumpMLIR() {
+static int dumpToyMLIR() {
   mlir::MLIRContext context;
   // Load our Dialect in this MLIR Context
   context.getOrLoadDialect<mlir::toy::ToyDialect>();
@@ -122,9 +135,11 @@ static int dumpMLIR() {
   if (int error = loadMLIR(sourceMgr, context, module)) {
     return error;
   }
+  bool loweringToAffine = emitAction >= Action::DumpAffineMLIR;
 
-  if (enableOpt) {
-    mlir::PassManager pm(module.get()->getName());
+  mlir::PassManager pm(module.get()->getName());
+
+  if (enableOpt || loweringToAffine) {
     // Apply any generic pass manager command line options and run the pipeline.
     if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
       return 4;
@@ -139,10 +154,26 @@ static int dumpMLIR() {
     optPM.addPass(mlir::toy::createShapeInferencePass());
     optPM.addPass(mlir::createCanonicalizerPass());
     optPM.addPass(mlir::createCSEPass());
+  }
 
-    if (mlir::failed(pm.run(*module))) {
-      return 4;
+  if (loweringToAffine) {
+    // Partially lower the toy dialect
+    pm.addPass(mlir::toy::createLowerToAffinePass());
+
+    // Add a few cleanups post lowering
+    mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
+    optPM.addPass(mlir::createCanonicalizerPass());
+    optPM.addPass(mlir::createCSEPass());
+
+    // Add optimizations if enabled.
+    if (enableOpt) {
+      optPM.addPass(mlir::affine::createLoopFusionPass());
+      optPM.addPass(mlir::affine::createAffineScalarReplacementPass());
     }
+  }
+
+  if (mlir::failed(pm.run(*module))) {
+    return 4;
   }
 
   module->dump();
@@ -174,8 +205,9 @@ int main(int argc, char **argv) {
   switch (emitAction) {
   case Action::DumpAST:
     return dumpAST();
-  case Action::DumpMLIR:
-    return dumpMLIR();
+  case Action::DumpToyMLIR:
+  case Action::DumpAffineMLIR:
+    return dumpToyMLIR();
   default:
     llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
   }

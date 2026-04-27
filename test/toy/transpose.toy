@@ -1,4 +1,4 @@
-# RUN: toy-compiler %s --opt -emit=mlir 2>&1 | FileCheck %s
+# RUN: toy-compiler %s --opt --emit=mlir-toy 2>&1 | FileCheck %s
 
 def transpose_transpose(x) {
   return transpose(transpose(x));
