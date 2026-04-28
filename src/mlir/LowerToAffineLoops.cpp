@@ -14,12 +14,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <cstdint>
 #include <memory>
 
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include <cstdint>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
@@ -93,8 +93,8 @@ static void lowerOpToLoops(mlir::Operation *op, mlir::ValueRange operands,
   Location loc = op->getLoc();
 
   // Insert an allocation and deallocation for the result of this operation.
-  mlir::MemRefType memRefTYpe = convertTensorToMemRef(tensorType);
-  mlir::Value alloc = insertAllocAndDealloc(memRefTYpe, loc, rewriter);
+  mlir::MemRefType memRefType = convertTensorToMemRef(tensorType);
+  mlir::Value alloc = insertAllocAndDealloc(memRefType, loc, rewriter);
 
   // Create a nest of affine lops, with one loop per dimension of the shape.
   // The buildAffineLoopNest function takes a callback that is used to construct
@@ -116,7 +116,7 @@ static void lowerOpToLoops(mlir::Operation *op, mlir::ValueRange operands,
                                                     ivs);
       });
 
-  // Replace this operation with the genretad alloc.
+  // Replace this operation with the generated alloc.
   rewriter.replaceOp(op, alloc);
 }
 
@@ -181,7 +181,7 @@ struct ConstantOpLowering : public OpRewritePattern<toy::ConstantOp> {
     mlir::Value alloc = insertAllocAndDealloc(memRefType, loc, rewriter);
 
     // We will be generating constant indices up-to the largest dimension.
-    // Create these cosntants up-front to avoid large amounts of redundant
+    // Create these constants up-front to avoid large amounts of redundant
     // operations.
     llvm::ArrayRef<int64_t> valueShape = memRefType.getShape();
     llvm::SmallVector<mlir::Value, 8> constantIndices;
@@ -197,9 +197,9 @@ struct ConstantOpLowering : public OpRewritePattern<toy::ConstantOp> {
           rewriter.create<arith::ConstantIndexOp>(loc, 0));
     }
 
-    // The constant operation represents a multi-dimensional cosntant, so we
+    // The constant operation represents a multi-dimensional constant, so we
     // will need to generate a store for each of the elements. The following
-    // functor recursively walks the dimensions of the cosntant shape,
+    // functor recursively walks the dimensions of the constant shape,
     // generating a store when the recursion hits the base case.
     llvm::SmallVector<mlir::Value, 2> indices;
     auto valueIt = constantValue.value_begin<FloatAttr>();
@@ -335,6 +335,70 @@ struct TransposeOpLowering : public ConversionPattern {
   }
 };
 
+//===----------------------------------------------------------------------===//
+// ToyToAffine RewritePatterns: Broadcast operations
+//===----------------------------------------------------------------------===//
+
+struct BroadcastOpLowering : public ConversionPattern {
+  BroadcastOpLowering(mlir::MLIRContext *ctx)
+      : ConversionPattern(toy::BroadcastOp::getOperationName(), 1, ctx) {}
+
+  llvm::LogicalResult
+  matchAndRewrite(Operation *op, llvm::ArrayRef<mlir::Value> operands,
+                  mlir::ConversionPatternRewriter &rewriter) const final {
+    auto tensorResType =
+        llvm::cast<mlir::RankedTensorType>(*op->result_type_begin());
+    auto tensorInputType =
+        llvm::cast<mlir::RankedTensorType>(*op->operand_type_begin());
+    Location loc = op->getLoc();
+
+    // Insert an allocation and deallocation for the result of this operation.
+    mlir::MemRefType memRefType = convertTensorToMemRef(tensorResType);
+    mlir::Value alloc = insertAllocAndDealloc(memRefType, loc, rewriter);
+
+    // Create a nest of affine lops, with one loop per dimension of the shape.
+    // The buildAffineLoopNest function takes a callback that is used to
+    // construct the body of the innermost loop given a builder, a location and
+    // a range of loop induction variables.
+    llvm::SmallVector<int64_t, 4> lowerBounds(tensorResType.getRank(), 0);
+    llvm::SmallVector<int64_t, 4> steps(tensorResType.getRank(), 1);
+
+    affine::buildAffineLoopNest(
+        rewriter, loc, lowerBounds, tensorResType.getShape(), steps,
+        [&](mlir::OpBuilder &nestedBuilder, mlir::Location loc,
+            mlir::ValueRange ivs) {
+          llvm::SmallVector<mlir::Value, 4> dims;
+          for (const auto values : llvm::zip(tensorInputType.getShape(), ivs)) {
+            if (std::get<0>(values) == 1) {
+              auto type = rewriter.getIndexType();
+              auto attr = rewriter.getIndexAttr(0);
+
+              mlir::Value constVal =
+                  rewriter.create<arith::ConstantOp>(loc, type, attr);
+              dims.push_back(constVal);
+            } else {
+              dims.push_back(std::get<1>(values));
+            }
+          }
+
+          // Generate na adaptor for the remapped operands of the TransposeOp.
+          // This allows for using the nice named accessors that are generated
+          // by the ODS
+          toy::BroadcastOpAdaptor broadcastAdaptor(operands);
+          mlir::Value input = broadcastAdaptor.getInput();
+
+          mlir::Value load =
+              nestedBuilder.create<affine::AffineLoadOp>(loc, input, dims);
+          nestedBuilder.create<affine::AffineStoreOp>(loc, load, alloc, ivs);
+        });
+
+    // Replace this operation with the generated alloc.
+    rewriter.replaceOp(op, alloc);
+
+    return llvm::success();
+  }
+};
+
 } // namespace
 
 //===----------------------------------------------------------------------===//
@@ -386,7 +450,8 @@ struct ToyToAffineLoweringPass
     mlir::RewritePatternSet patterns(&getContext());
     patterns.add<AddOpLowering, ConstantOpLowering, FuncOpLowering,
                  MulOpLowering, AddOpLowering, ReturnOpLowering,
-                 TransposeOpLowering, PrintOpLowering>(&getContext());
+                 TransposeOpLowering, PrintOpLowering, BroadcastOpLowering>(
+        &getContext());
 
     // With the target and rewrite patterns defined, we can now attempt the
     // conversion. The conversion will signal failure if any of our `illegal`
