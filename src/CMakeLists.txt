@@ -43,7 +43,6 @@ mlirtoy_link_llvm_components(MLIRGen)
 mlirtoy_link_mlir_libs(
   MLIRGen
   MLIRIR
-  MLIRParser
   MLIRSupport)
 add_dependencies(MLIRGen ToyOpIncGen) # ToyOpIncGen needs to be build first
 target_link_libraries(
@@ -62,7 +61,6 @@ mlirtoy_link_llvm_components(ShapeInferencePass)
 mlirtoy_link_mlir_libs(
   ShapeInferencePass
   MLIRIR
-  MLIRParser
   MLIRSupport)
 add_dependencies(ShapeInferencePass ToyOpIncGen)
 target_link_libraries(
@@ -90,7 +88,6 @@ mlirtoy_link_llvm_components(ToyCombine)
 mlirtoy_link_mlir_libs(
   ToyCombine
   MLIRIR
-  MLIRParser
   MLIRSupport)
 add_dependencies(
   ToyCombine
@@ -123,7 +120,6 @@ mlirtoy_link_mlir_libs(
   MLIRFuncDialect
   MLIRIR
   MLIRMemRefDialect
-  MLIRParser
   MLIRSupport)
 add_dependencies(
   LowerToAffineLoops
