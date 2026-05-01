@@ -13,10 +13,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <llvm/Support/LogicalResult.h>
-#include <mlir/IR/MLIRContext.h>
-#include <mlir/IR/PatternMatch.h>
-#include <mlir/IR/Value.h>
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Value.h"
+#include "llvm/Support/LogicalResult.h"
 
 #include "toy/Dialect.h"
 

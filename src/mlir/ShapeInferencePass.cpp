@@ -15,15 +15,15 @@
 
 #include <memory>
 
-#include <llvm/ADT/STLExtras.h>
-#include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/Support/Casting.h>
-#include <llvm/Support/Debug.h>
-#include <mlir/IR/BuiltinTypes.h>
-#include <mlir/IR/Operation.h>
-#include <mlir/IR/Types.h>
-#include <mlir/Pass/Pass.h>
-#include <mlir/Support/TypeID.h>
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Support/TypeID.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/Debug.h"
 
 #include "toy/Dialect.h"
 #include "toy/Passes.h"

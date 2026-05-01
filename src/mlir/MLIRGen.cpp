@@ -16,20 +16,20 @@
 #include <numeric>
 #include <vector>
 
-#include <llvm/ADT/ArrayRef.h>
-#include <llvm/ADT/ScopedHashTable.h>
-#include <llvm/ADT/StringRef.h>
-#include <llvm/ADT/Twine.h>
-#include <llvm/Support/Casting.h>
-#include <llvm/Support/LogicalResult.h>
-#include <mlir/IR/Builders.h>
-#include <mlir/IR/BuiltinOps.h>
-#include <mlir/IR/BuiltinTypes.h>
-#include <mlir/IR/Diagnostics.h>
-#include <mlir/IR/Location.h>
-#include <mlir/IR/MLIRContext.h>
-#include <mlir/IR/Types.h>
-#include <mlir/IR/Verifier.h>
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Diagnostics.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/Types.h"
+#include "mlir/IR/Verifier.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/ScopedHashTable.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Twine.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/LogicalResult.h"
 
 #include "toy/AST.h"
 #include "toy/Dialect.h"
