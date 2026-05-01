@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "mlir/Dialect/Affine/Passes.h"
@@ -21,7 +22,6 @@
 #include "mlir/Dialect/LLVMIR/Transforms/InlinerInterfaceImpl.h"
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
-#include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -36,7 +36,12 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/PassInstrumentation.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Passes/OptimizationLevel.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -68,9 +73,7 @@ static cl::opt<InputType>
               cl::values(clEnumValN(InputType::Toy, "toy",
                                     "load the input file as a Toy source")),
               cl::values(clEnumValN(InputType::MLIR, "mlir",
-                                    "load the input file as a MLIR file"))
-
-    );
+                                    "load the input file as a MLIR file")));
 
 namespace {
 enum class Action {
@@ -98,6 +101,10 @@ static cl::opt<Action> emitAction(
 
 static cl::opt<bool>
     enableOpt("opt", cl::desc("Enable the optimizations in code generation"));
+
+static cl::opt<bool> enablePrintPasses(
+    "print-llvm-passes",
+    cl::desc("Print all the passes being used in the LLVM IR"));
 
 /// Returns a Toy AST resulting from parsing the fil or a nullptr on error.
 static std::unique_ptr<toy::ModuleAST>
@@ -274,12 +281,42 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
   }
 
   mlir::ExecutionEngine::setupTargetTripleAndDataLayout(llvmModule.get(),
-                                                        tmOrError.get().get());
+                                                        tmOrError->get());
 
-  // Optinally run an optimization pipeline over the llvm module
-  auto optPipeline = mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0,
-                                                     tmOrError.get().get());
+  // Create the analysis managers
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
 
+  // Set up Pass Instrumentation for debugging
+  llvm::PassInstrumentationCallbacks PIC;
+  llvm::PrintPassOptions PPO;
+
+  llvm::StandardInstrumentations SI(llvmContext, enablePrintPasses, false, PPO);
+  SI.registerCallbacks(PIC, &MAM);
+
+  // Disable aggressive loop unrolling. This stops the CFG from flattening and
+  // prevents the GVN/MemoryDependenceAnalysis from hanging on the MemRef
+  // structs.
+  llvm::PipelineTuningOptions PTO;
+  PTO.LoopUnrolling = false;
+
+  // Build the PassBuilder using the custom Tuning Options.
+  llvm::PassBuilder PB(tmOrError->get(), PTO, std::nullopt, &PIC);
+
+  PB.registerModuleAnalyses(MAM);
+  PB.registerCGSCCAnalyses(CGAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerLoopAnalyses(LAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+  // Create the pipeline
+  llvm::OptimizationLevel optLvl =
+      enableOpt ? llvm::OptimizationLevel::O3 : llvm::OptimizationLevel::O0;
+  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(optLvl);
+
+  // Verify if the code is not broken
   bool isBroken = llvm::verifyModule(*llvmModule, &llvm::errs());
   if (isBroken) {
     llvm::errs() << "Error: LLVM IR is malformed!\n";
@@ -287,11 +324,8 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
     return -1;
   }
 
-  if (auto err = optPipeline(llvmModule.get())) {
-    llvm::errs() << "Failed to optimize LLVM IR " << err << "\n";
-    return -1;
-  }
-
+  // Run the pipeline (this modifies llvmModule in-place)
+  MPM.run(*llvmModule, MAM);
   llvm::errs() << *llvmModule << "\n";
   return 0;
 }
