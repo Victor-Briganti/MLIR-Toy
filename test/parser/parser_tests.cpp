@@ -66,7 +66,7 @@ TEST_CASE("Parser handles empty functions", "[parser]") {
 
   auto Module = Parser.parseModule();
   REQUIRE(Module != nullptr);
-  
+
   int FnCount = 0;
   for (auto it = Module->begin(); it != Module->end(); ++it) {
     FnCount++;

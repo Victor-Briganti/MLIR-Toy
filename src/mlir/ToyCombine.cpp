@@ -13,12 +13,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "toy/Dialect.h"
-
 #include <llvm/Support/LogicalResult.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/IR/Value.h>
+
+#include "toy/Dialect.h"
 
 using namespace mlir;
 

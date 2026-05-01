@@ -13,9 +13,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "toy/Dialect.h"
-#include "toy/Passes.h"
-#include "toy/ShapeInferenceInterface.h"
+#include <memory>
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -27,12 +25,13 @@
 #include <mlir/Pass/Pass.h>
 #include <mlir/Support/TypeID.h>
 
-#include <memory>
+#include "toy/Dialect.h"
+#include "toy/Passes.h"
+#include "toy/ShapeInferenceInterface.h"
 
 #define DEBUG_TYPE "shape-inference"
 #define DBGS() (llvm::dbgs() << '[' << DEBUG_TYPE << "] ")
 #define LDBG(X) LLVM_DEBUG(DBGS() << X << "\n")
-
 
 using namespace mlir;
 using namespace toy;

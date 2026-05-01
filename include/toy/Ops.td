@@ -1,6 +1,6 @@
 //===--- Ops.td - Toy dialect operation definitions -------*- tablegen -*-===//
 //
-// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM 
+// Part of the MLIR Toy project, under the Apache License v2.0 with LLVM
 // Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
@@ -43,7 +43,7 @@ Op<Toy_Dialect, mnemonic, traits>;
 // BroadcastOp
 //===----------------------------------------------------------------------===//
 
-def BroadcastOp : Toy_Op<"broadcast", 
+def BroadcastOp : Toy_Op<"broadcast",
                   [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "broadcast operation";
   let description = [{
@@ -122,7 +122,7 @@ def ConstantOp : Toy_Op<"constant", [Pure]> {
 // AddOp
 //===----------------------------------------------------------------------===//
 
-def AddOp : Toy_Op<"add", 
+def AddOp : Toy_Op<"add",
                 [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "element-wise addition operaiton";
   let description = [{
@@ -149,15 +149,15 @@ def AddOp : Toy_Op<"add",
 def CastOp : Toy_Op<"cast", [
     DeclareOpInterfaceMethods<CastOpInterface>,
     DeclareOpInterfaceMethods<ShapeInferenceOpInterface>,
-    Pure, 
+    Pure,
     SameOperandsAndResultShape
   ]> {
   let summary = "shape cast operation";
   let description = [{
-    The "cast" operation converts a tensor from one type to an equivalent type 
-    without changing any data elements. The source and destination types must 
+    The "cast" operation converts a tensor from one type to an equivalent type
+    without changing any data elements. The source and destination types must
     both be tensor with the same element type. If both are ranked, then shape is
-    required to match. The operation is invalid if converting to a mismatching 
+    required to match. The operation is invalid if converting to a mismatching
     constant dimension.
   }];
 
@@ -189,7 +189,7 @@ def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
     ```
   }];
 
-  let arguments = (ins 
+  let arguments = (ins
       SymbolNameAttr:$sym_name,
       TypeAttrOf<FunctionType>:$function_type,
       OptionalAttr<DictArrayAttr>:$arg_attrs,
@@ -197,7 +197,7 @@ def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
       );
   let regions = (region AnyRegion:$body);
 
-  let builders = [OpBuilder<(ins 
+  let builders = [OpBuilder<(ins
       "StringRef":$name, "FunctionType":$type,
       CArg<"ArrayRef<NamedAttribute>", "{}">:$attrs)
     >];
@@ -224,7 +224,7 @@ def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
 // GenericCallOp
 //===----------------------------------------------------------------------===//
 
-def GenericCallOp : Toy_Op<"generic_call", 
+def GenericCallOp : Toy_Op<"generic_call",
   [DeclareOpInterfaceMethods<CallOpInterface>]> {
   let summary = "generic_call operation";
   let description = [{
@@ -244,8 +244,8 @@ def GenericCallOp : Toy_Op<"generic_call",
 
   // The generic call operation takes a symbol reference attribute as the
   // callee, and inputs for the call.
-  let arguments = (ins 
-    FlatSymbolRefAttr:$callee, 
+  let arguments = (ins
+    FlatSymbolRefAttr:$callee,
     Variadic<F64Tensor>:$inputs,
     OptionalAttr<DictArrayAttr>:$arg_attrs,
     OptionalAttr<DictArrayAttr>:$res_attrs
@@ -270,7 +270,7 @@ def GenericCallOp : Toy_Op<"generic_call",
 // MulOP
 //===----------------------------------------------------------------------===//
 
-def MulOp : Toy_Op<"mul", 
+def MulOp : Toy_Op<"mul",
                 [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "element-wise multiplication operation";
   let description = [{
@@ -382,7 +382,7 @@ def ReturnOp : Toy_Op<"return", [Pure, HasParent<"FuncOp">, Terminator]> {
 // TransposeOp
 //===----------------------------------------------------------------------===//
 
-def TransposeOp : Toy_Op<"transpose", 
+def TransposeOp : Toy_Op<"transpose",
                   [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "transpose operation";
 
@@ -400,7 +400,7 @@ def TransposeOp : Toy_Op<"transpose",
 
   // Invoke a static verify method to verify this return operation.
   let hasVerifier = 1;
- 
+
   // Enable registering canonicalization patterns with this operation.
   let hasCanonicalizer = 1;
 }

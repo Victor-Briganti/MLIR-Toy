@@ -1,9 +1,13 @@
+# Define the include directory that is going to be used
+set(TABLEGEN_INCLUDE_DIR "-I${PROJECT_SOURCE_DIR}/include")
+
+
 # Defines the tablegen files that we are looking
 set(LLVM_TARGET_DEFINITIONS Ops.td)
-mlir_tablegen(Ops.h.inc -gen-op-decls) # Generates Op declarations
-mlir_tablegen(Ops.cpp.inc -gen-op-defs) # Generates Op definitions
-mlir_tablegen(Dialect.h.inc -gen-dialect-decls -dialect=toy)
-mlir_tablegen(Dialect.cpp.inc -gen-dialect-defs -dialect=toy)
+mlir_tablegen(Ops.h.inc ${TABLEGEN_INCLUDE_DIR} -gen-op-decls) # Generates Op declarations
+mlir_tablegen(Ops.cpp.inc ${TABLEGEN_INCLUDE_DIR} -gen-op-defs) # Generates Op definitions
+mlir_tablegen(Dialect.h.inc ${TABLEGEN_INCLUDE_DIR} -gen-dialect-decls -dialect=toy)
+mlir_tablegen(Dialect.cpp.inc ${TABLEGEN_INCLUDE_DIR} -gen-dialect-defs -dialect=toy)
 add_public_tablegen_target(ToyOpIncGen)
 
 set(LLVM_TARGET_DEFINITIONS ShapeInferenceInterface.td)

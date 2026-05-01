@@ -13,9 +13,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "toy/MLIRGen.h"
-#include "toy/AST.h"
-#include "toy/Dialect.h"
+#include <numeric>
+#include <vector>
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/ScopedHashTable.h>
@@ -31,9 +30,11 @@
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/Types.h>
 #include <mlir/IR/Verifier.h>
-#include <numeric>
-#include <toy/Lexer.h>
-#include <vector>
+
+#include "toy/AST.h"
+#include "toy/Dialect.h"
+#include "toy/Lexer.h"
+#include "toy/MLIRGen.h"
 
 using namespace mlir::toy;
 
