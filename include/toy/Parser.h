@@ -15,9 +15,6 @@
 #ifndef TOY_PARSER_H
 #define TOY_PARSER_H
 
-#include "toy/AST.h"
-#include "toy/Lexer.h"
-
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -25,6 +22,9 @@
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include "toy/AST.h"
+#include "toy/Lexer.h"
 
 namespace toy {
 

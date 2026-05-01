@@ -16,14 +16,14 @@
 #ifndef TOY_AST_H
 #define TOY_AST_H
 
-#include "toy/Lexer.h"
-
 #include <cstdint>
 #include <memory>
 #include <vector>
 
 #include "llvm/ADT/ArrayRef.h"
 #include <llvm/ADT/StringRef.h>
+
+#include "toy/Lexer.h"
 
 namespace toy {
 /// A variable type with shape information

@@ -9,8 +9,10 @@ mlirtoy_link_mlir_libs(
   MLIRAnalysis
   MLIRArithDialect
   MLIRFuncDialect
+  MLIRFuncAllExtensions
   MLIRFunctionInterfaces
   MLIRIR
+  MLIRLLVMIRTransforms
   MLIRMemRefDialect
   MLIRParser
   MLIRPass
@@ -26,6 +28,7 @@ target_link_libraries(
   mlirtoy::ToyCombine
   mlirtoy::ShapeInferencePass
   mlirtoy::LowerToAffineLoops
+  mlirtoy::LowerToLLVM
   mlirtoy_options
   mlirtoy_warnings)
 target_include_directories(

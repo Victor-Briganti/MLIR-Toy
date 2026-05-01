@@ -13,8 +13,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "toy/Dialect.h"
-
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
@@ -38,6 +36,8 @@
 #include <mlir/Interfaces/FunctionImplementation.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Transforms/InliningUtils.h>
+
+#include "toy/Dialect.h"
 
 using namespace mlir::toy;
 

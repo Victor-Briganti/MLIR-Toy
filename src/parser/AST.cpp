@@ -17,7 +17,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/raw_ostream.h"
-#include <llvm/ADT/STLExtras.h>
+#include "llvm/ADT/STLExtras.h"
 
 using namespace toy;
 
