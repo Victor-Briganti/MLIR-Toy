@@ -14,23 +14,26 @@
 
 #include <memory>
 #include <string>
-#include <system_error>
 
-#include <llvm/ADT/StringRef.h>
-#include <llvm/Support/CommandLine.h>
-#include <llvm/Support/ErrorOr.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/raw_ostream.h>
-#include <mlir/Dialect/Affine/Passes.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
-#include <mlir/IR/AsmState.h>
-#include <mlir/IR/BuiltinOps.h>
-#include <mlir/IR/MLIRContext.h>
-#include <mlir/IR/OwningOpRef.h>
-#include <mlir/Parser/Parser.h>
-#include <mlir/Pass/PassManager.h>
-#include <mlir/Transforms/Passes.h>
+#include "mlir/Dialect/Affine/Passes.h"
+#include "mlir/Dialect/Func/Extensions/AllExtensions.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/Transforms/InlinerInterfaceImpl.h"
+#include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
+#include "mlir/IR/AsmState.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/DialectRegistry.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OwningOpRef.h"
+#include "mlir/Parser/Parser.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/ErrorOr.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "toy/AST.h"
 #include "toy/Dialect.h"
@@ -61,15 +64,19 @@ static cl::opt<InputType>
     );
 
 namespace {
-enum class Action { None, DumpAST, DumpToyMLIR, DumpAffineMLIR };
+enum class Action { None, DumpAST, DumpMLIRToy, DumpMLIRAffine, DumpMLIRLLVM };
 } // namespace
 static cl::opt<Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
     cl::values(clEnumValN(Action::DumpAST, "ast", "output the AST dump")),
-    cl::values(clEnumValN(Action::DumpToyMLIR, "mlir-toy",
+    cl::values(clEnumValN(Action::DumpMLIRToy, "mlir",
                           "output the MLIR Toy dialect dump")),
-    cl::values(clEnumValN(Action::DumpAffineMLIR, "mlir-affine",
-                          "output the MLIR Affine dialect dump")));
+    cl::values(clEnumValN(Action::DumpMLIRAffine, "mlir-affine",
+                          "output the MLIR Affine dialect dump")),
+    cl::values(clEnumValN(Action::DumpMLIRLLVM, "mlir-llvm",
+                          "output the MLIR LLVM dialect dump"))
+
+);
 
 static cl::opt<bool>
     enableOpt("opt", cl::desc("Enable the optimizations in code generation"));
@@ -126,25 +133,57 @@ static int loadMLIR(llvm::SourceMgr &sourceMgr, mlir::MLIRContext &context,
   return 0;
 }
 
-static int dumpToyMLIR() {
-  mlir::MLIRContext context;
-  // Load our Dialect in this MLIR Context
-  context.getOrLoadDialect<mlir::toy::ToyDialect>();
-  llvm::SourceMgr sourceMgr;
-  mlir::OwningOpRef<mlir::ModuleOp> module;
-  if (int error = loadMLIR(sourceMgr, context, module)) {
-    return error;
-  }
-  bool loweringToAffine = emitAction >= Action::DumpAffineMLIR;
-
-  mlir::PassManager pm(module.get()->getName());
-
-  if (enableOpt || loweringToAffine) {
-    // Apply any generic pass manager command line options and run the pipeline.
-    if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
-      return 4;
+static int loadMLIR(mlir::MLIRContext &context,
+                    mlir::OwningOpRef<mlir::ModuleOp> &module) {
+  // Handle a '.toy' input to the compiler.
+  if (inputType != InputType::MLIR &&
+      !llvm::StringRef(inputFilename).ends_with(".mlir")) {
+    auto moduleAST = parseInputFile(inputFilename);
+    if (!moduleAST) {
+      return 6;
     }
 
+    module = mlirGen(context, *moduleAST);
+    return !module ? 1 : 0;
+  }
+
+  // Otherwise, the input is '.mlir'
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
+      llvm::MemoryBuffer::getFileOrSTDIN(inputFilename);
+  if (std::error_code ec = fileOrErr.getError()) {
+    llvm::errs() << "Could not open input file: " << ec.message() << "\n";
+    return -1;
+  }
+
+  // Parse the input MLIR.
+  llvm::SourceMgr sourceMgr;
+  sourceMgr.AddNewSourceBuffer(std::move(*fileOrErr), llvm::SMLoc());
+  module = mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
+  if (!module) {
+    llvm::errs() << "Error can't load file " << inputFilename << "\n";
+    return 3;
+  }
+
+  return 0;
+}
+
+static int loadAndProcessMLIR(mlir::MLIRContext &context,
+                              mlir::OwningOpRef<mlir::ModuleOp> &module) {
+  if (int error = loadMLIR(context, module)) {
+    return error;
+  }
+
+  mlir::PassManager pm(module.get()->getName());
+  // Apply any generic pass manager command line options and run the pipeline.
+  if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
+    return 4;
+  }
+
+  // Check to see what granularity of MLIR we are compiling to.
+  bool loweringToAffine = emitAction >= Action::DumpMLIRAffine;
+  bool loweringToLLVM = emitAction >= Action::DumpMLIRLLVM;
+
+  if (enableOpt || loweringToAffine) {
     // Inline all functions into main and then delete them.
     pm.addPass(mlir::createInlinerPass());
 
@@ -172,11 +211,17 @@ static int dumpToyMLIR() {
     }
   }
 
+  if (loweringToLLVM) {
+    // Fully lower the toy dialect
+    pm.addPass(mlir::toy::createLowerToLLVMPass());
+    // This is necessary to have line tables emitted and basic debugger working.
+    pm.addPass(mlir::LLVM::createDIScopeForLLVMFuncOpPass());
+  }
+
   if (mlir::failed(pm.run(*module))) {
     return 4;
   }
 
-  module->dump();
   return 0;
 }
 
@@ -196,21 +241,34 @@ static int dumpAST() {
 }
 
 int main(int argc, char **argv) {
-  // Register any command line options
+  // Register any command line options.
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
   mlir::registerPassManagerCLOptions();
+
   cl::ParseCommandLineOptions(argc, argv, "toy compiler\n");
 
-  switch (emitAction) {
-  case Action::DumpAST:
-    return dumpAST();
-  case Action::DumpToyMLIR:
-  case Action::DumpAffineMLIR:
-    return dumpToyMLIR();
-  default:
-    llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
+  // If we aren't dumping the AST, then we are compiling with/to MLIR.
+  mlir::DialectRegistry registry;
+  mlir::func::registerAllExtensions(registry);
+  mlir::LLVM::registerInlinerInterface(registry);
+
+  mlir::MLIRContext context(registry);
+  // Load our Dialect in this MLIR Context.
+  context.getOrLoadDialect<mlir::toy::ToyDialect>();
+
+  mlir::OwningOpRef<mlir::ModuleOp> module;
+  if (int error = loadAndProcessMLIR(context, module)) {
+    return error;
   }
 
-  return 0;
+  // If we aren't exporting to non-mlir, then we are done.
+  bool isOutputingMLIR = emitAction <= Action::DumpMLIRLLVM;
+  if (isOutputingMLIR) {
+    module->dump();
+    return 0;
+  }
+
+  llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
+  return -1;
 }

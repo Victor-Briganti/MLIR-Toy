@@ -137,3 +137,45 @@ target_include_directories(
   LowerToAffineLoops
   PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+
+# --------------------------------------------------------------------------- #
+# Lowering to LLVM
+# --------------------------------------------------------------------------- #
+
+add_library(LowerToLLVM mlir/LowerToLLVM.cpp)
+add_library(mlirtoy::LowerToLLVM ALIAS LowerToLLVM)
+mlirtoy_link_llvm_components(LowerToLLVM)
+mlirtoy_link_mlir_libs(
+  LowerToLLVM
+  MLIRAffineDialect
+  MLIRAffineToStandard
+  MLIRArithDialect
+  MLIRArithToLLVM
+  MLIRControlFlowDialect
+  MLIRControlFlowToLLVM
+  MLIRFuncDialect
+  MLIRFuncToLLVM
+  MLIRIR
+  MLIRLLVMCommonConversion
+  MLIRLLVMDialect
+  MLIRMemRefDialect
+  MLIRMemRefToLLVM
+  MLIRSCFDialect
+  MLIRSCFToControlFlow
+  MLIRSupport)
+add_dependencies(
+  LowerToLLVM
+  ToyOpIncGen
+  ToyCombineIncGen
+  ToyShapeInferenceInterfaceIncGen)
+target_link_libraries(
+  LowerToLLVM
+  PRIVATE
+  mlirtoy_options
+  mlirtoy_warnings)
+
+# Add the binary directory for the generated .inc files
+target_include_directories(
+  LowerToLLVM
+  PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)

@@ -1,4 +1,4 @@
-// RUN: toy-compiler -x=mlir %s --opt --emit=mlir-toy 2>&1 | FileCheck %s
+// RUN: toy-compiler -x=mlir %s --opt --emit=mlir 2>&1 | FileCheck %s
 
 toy.func private @multiply_transpose(%arg0: tensor<*xf64>, %arg1: tensor<*xf64>) -> tensor<*xf64> {
   %0 = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
