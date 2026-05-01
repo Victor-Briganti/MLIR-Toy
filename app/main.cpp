@@ -36,6 +36,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -243,6 +244,10 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
 }
 
 static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
+  // Initialize LLVM targets
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+
   // Register the translation to LLVM IR with the MLIR context.
   mlir::registerBuiltinDialectTranslation(*module->getContext());
   mlir::registerLLVMDialectTranslation(*module->getContext());
@@ -254,10 +259,6 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
     llvm::errs() << "Failed to emit LLVM IR\n";
     return -1;
   }
-
-  // Initialize LLVM targets
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
 
   // Configure the LLVM Module.
   auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
@@ -276,8 +277,15 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
                                                         tmOrError.get().get());
 
   // Optinally run an optimization pipeline over the llvm module
-  auto optPipeline =
-      mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0, nullptr);
+  auto optPipeline = mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0,
+                                                     tmOrError.get().get());
+
+  bool isBroken = llvm::verifyModule(*llvmModule, &llvm::errs());
+  if (isBroken) {
+    llvm::errs() << "Error: LLVM IR is malformed!\n";
+    llvm::errs() << *llvmModule << "\n";
+    return -1;
+  }
 
   if (auto err = optPipeline(llvmModule.get())) {
     llvm::errs() << "Failed to optimize LLVM IR " << err << "\n";
@@ -325,7 +333,7 @@ int main(int argc, char **argv) {
   }
 
   // If we aren't exporting to non-mlir, then we are done.
-  if (Action::DumpMLIRLLVM == emitAction) {
+  if (Action::DumpMLIRLLVM >= emitAction) {
     module->dump();
     return 0;
   }

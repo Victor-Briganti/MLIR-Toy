@@ -62,7 +62,7 @@ static mlir::MemRefType convertTensorToMemRef(mlir::RankedTensorType type) {
 static mlir::Value insertAllocAndDealloc(mlir::MemRefType type,
                                          mlir::Location loc,
                                          mlir::PatternRewriter &rewriter) {
-  auto alloc = rewriter.create<mlir::memref::AllocaOp>(loc, type);
+  auto alloc = rewriter.create<mlir::memref::AllocOp>(loc, type);
   auto dealloc = rewriter.create<mlir::memref::DeallocOp>(loc, alloc);
 
   // Make sure to allocate at the beginning of the block.
@@ -381,7 +381,7 @@ struct BroadcastOpLowering : public ConversionPattern {
             }
           }
 
-          // Generate na adaptor for the remapped operands of the TransposeOp.
+          // Generate na adaptor for the remapped operands of the BroadcastOp.
           // This allows for using the nice named accessors that are generated
           // by the ODS
           toy::BroadcastOpAdaptor broadcastAdaptor(operands);

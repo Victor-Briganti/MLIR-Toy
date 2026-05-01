@@ -22,7 +22,7 @@ include "mlir/Interfaces/CastInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/SymbolInterfaces.td"
 
-include "ShapeInferenceInterface.td"
+include "toy/ShapeInferenceInterface.td"
 
 // Provide a definition of the 'toy' dialect in the ODS framework so that we
 // can define our operations.

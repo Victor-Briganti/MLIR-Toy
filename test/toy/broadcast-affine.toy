@@ -2,25 +2,25 @@
 
 # CHECK-LABEL: func.func @main()
 def main() {
-  # CHECK: %[[ALLOCA_ADD:.*]] = memref.alloca() : memref<2x3xf64>
-  # CHECK-NEXT: %[[ALLOCA_BROADCAST:.*]] = memref.alloca() : memref<2x3xf64>
-  # CHECK-NEXT: %[[ALLOCA_B:.*]] = memref.alloca() : memref<2x1xf64>
-  # CHECK-NEXT: %[[ALLOCA_A:.*]] = memref.alloca() : memref<2x3xf64>
+  # CHECK: %[[ALLOC_ADD:.*]] = memref.alloc() : memref<2x3xf64>
+  # CHECK-NEXT: %[[ALLOC_BROADCAST:.*]] = memref.alloc() : memref<2x3xf64>
+  # CHECK-NEXT: %[[ALLOC_B:.*]] = memref.alloc() : memref<2x1xf64>
+  # CHECK-NEXT: %[[ALLOC_A:.*]] = memref.alloc() : memref<2x3xf64>
 
   var a<2, 3> = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
   var b<2, 1> = [[10.0], [20.0]];
 
   # CHECK: affine.for %[[ARG0:.*]] = 0 to 2 
   # CHECK-NEXT: affine.for %[[ARG1:.*]] = 0 to 3
-  # CHECK-NEXT: %[[VAL_B:.*]] = affine.load %[[ALLOCA_B]][%[[ARG0]], 0] : memref<2x1xf64>
-  # CHECK-NEXT: affine.store %[[VAL_B]], %[[ALLOCA_BROADCAST]][%[[ARG0]], %[[ARG1]]] : memref<2x3xf64>
+  # CHECK-NEXT: %[[VAL_B:.*]] = affine.load %[[ALLOC_B]][%[[ARG0]], 0] : memref<2x1xf64>
+  # CHECK-NEXT: affine.store %[[VAL_B]], %[[ALLOC_BROADCAST]][%[[ARG0]], %[[ARG1]]] : memref<2x3xf64>
 
   # CHECK: affine.for %[[ARG0_ADD:.*]] = 0 to 2 
   # CHECK-NEXT: affine.for %[[ARG1_ADD:.*]] = 0 to 3
-  # CHECK-NEXT: %[[VAL_A:.*]] = affine.load %[[ALLOCA_A]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
-  # CHECK-NEXT: %[[VAL_BROADCAST:.*]] = affine.load %[[ALLOCA_BROADCAST]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
+  # CHECK-NEXT: %[[VAL_A:.*]] = affine.load %[[ALLOC_A]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
+  # CHECK-NEXT: %[[VAL_BROADCAST:.*]] = affine.load %[[ALLOC_BROADCAST]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
   # CHECK-NEXT: %[[VAL_ADD:.*]] = arith.addf %[[VAL_A]], %[[VAL_BROADCAST]] : f64
-  # CHECK-NEXT: affine.store %[[VAL_ADD]], %[[ALLOCA_ADD]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
+  # CHECK-NEXT: affine.store %[[VAL_ADD]], %[[ALLOC_ADD]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
 
   var c = a + b;
   print(c);
