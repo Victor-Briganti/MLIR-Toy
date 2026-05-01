@@ -20,6 +20,8 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/Transforms/InlinerInterfaceImpl.h"
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
+#include "mlir/ExecutionEngine/ExecutionEngine.h"
+#include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -27,12 +29,18 @@
 #include "mlir/IR/OwningOpRef.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Export.h"
 #include "mlir/Transforms/Passes.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "toy/AST.h"
@@ -64,7 +72,14 @@ static cl::opt<InputType>
     );
 
 namespace {
-enum class Action { None, DumpAST, DumpMLIRToy, DumpMLIRAffine, DumpMLIRLLVM };
+enum class Action {
+  None,
+  DumpAST,
+  DumpMLIRToy,
+  DumpMLIRAffine,
+  DumpMLIRLLVM,
+  DumpLLVMIR
+};
 } // namespace
 static cl::opt<Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
@@ -74,7 +89,9 @@ static cl::opt<Action> emitAction(
     cl::values(clEnumValN(Action::DumpMLIRAffine, "mlir-affine",
                           "output the MLIR Affine dialect dump")),
     cl::values(clEnumValN(Action::DumpMLIRLLVM, "mlir-llvm",
-                          "output the MLIR LLVM dialect dump"))
+                          "output the MLIR LLVM dialect dump")),
+    cl::values(clEnumValN(Action::DumpLLVMIR, "llvm",
+                          "output the LLVM IR dump"))
 
 );
 
@@ -225,6 +242,52 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
   return 0;
 }
 
+static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
+  // Register the translation to LLVM IR with the MLIR context.
+  mlir::registerBuiltinDialectTranslation(*module->getContext());
+  mlir::registerLLVMDialectTranslation(*module->getContext());
+
+  // Convert the module to LLVM IR in a new LLVM IR context.
+  llvm::LLVMContext llvmContext;
+  auto llvmModule = mlir::translateModuleToLLVMIR(*module, llvmContext);
+  if (!llvmModule) {
+    llvm::errs() << "Failed to emit LLVM IR\n";
+    return -1;
+  }
+
+  // Initialize LLVM targets
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+
+  // Configure the LLVM Module.
+  auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
+  if (!tmBuilderOrError) {
+    llvm::errs() << "Could not create JITTargetMachineBuilder\n";
+    return -1;
+  }
+
+  auto tmOrError = tmBuilderOrError->createTargetMachine();
+  if (!tmOrError) {
+    llvm::errs() << "Could not create TargetMachine\n";
+    return -1;
+  }
+
+  mlir::ExecutionEngine::setupTargetTripleAndDataLayout(llvmModule.get(),
+                                                        tmOrError.get().get());
+
+  // Optinally run an optimization pipeline over the llvm module
+  auto optPipeline =
+      mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0, nullptr);
+
+  if (auto err = optPipeline(llvmModule.get())) {
+    llvm::errs() << "Failed to optimize LLVM IR " << err << "\n";
+    return -1;
+  }
+
+  llvm::errs() << *llvmModule << "\n";
+  return 0;
+}
+
 static int dumpAST() {
   if (inputType == InputType::MLIR) {
     llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
@@ -262,10 +325,13 @@ int main(int argc, char **argv) {
   }
 
   // If we aren't exporting to non-mlir, then we are done.
-  bool isOutputingMLIR = emitAction <= Action::DumpMLIRLLVM;
-  if (isOutputingMLIR) {
+  if (Action::DumpMLIRLLVM == emitAction) {
     module->dump();
     return 0;
+  }
+
+  if (emitAction == Action::DumpLLVMIR) {
+    return dumpLLVMIR(module);
   }
 
   llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";

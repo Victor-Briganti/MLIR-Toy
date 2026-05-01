@@ -8,11 +8,13 @@ mlirtoy_link_mlir_libs(
   MLIRAffineTransforms
   MLIRAnalysis
   MLIRArithDialect
-  MLIRFuncDialect
+  MLIRExecutionEngine
   MLIRFuncAllExtensions
+  MLIRFuncDialect
   MLIRFunctionInterfaces
   MLIRIR
   MLIRLLVMIRTransforms
+  MLIRLLVMToLLVMIRTranslation
   MLIRMemRefDialect
   MLIRParser
   MLIRPass
