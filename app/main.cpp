@@ -44,6 +44,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
+#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
@@ -125,36 +126,18 @@ parseInputFile(llvm::StringRef filename) {
   return parser.parseModule();
 }
 
-static int loadMLIR(llvm::SourceMgr &sourceMgr, mlir::MLIRContext &context,
-                    mlir::OwningOpRef<mlir::ModuleOp> &module) {
-  // Handle '.toy' input to the compiler
-  if (inputType != InputType::MLIR &&
-      !llvm::StringRef(inputFilename).ends_with(".mlir")) {
-    auto moduleAST = parseInputFile(inputFilename);
-    if (!moduleAST) {
-      return 6;
-    }
-
-    module = mlirGen(context, *moduleAST);
-    return !module ? 1 : 0;
+static int dumpAST() {
+  if (inputType == InputType::MLIR) {
+    llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
+    return 5;
   }
 
-  // Otherwise, the input is '.mlir'
-  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
-      llvm::MemoryBuffer::getFileOrSTDIN(inputFilename);
-  if (std::error_code ec = fileOrErr.getError()) {
-    llvm::errs() << "Could not open input file: " << ec.message() << "\n";
-    return -1;
+  auto moduleAST = parseInputFile(inputFilename);
+  if (!moduleAST) {
+    return 1;
   }
 
-  // Parse the input mlir.
-  sourceMgr.AddNewSourceBuffer(std::move(*fileOrErr), llvm::SMLoc());
-  module = mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
-  if (!module) {
-    llvm::errs() << "Error can't load file " << inputFilename << "\n";
-    return 3;
-  }
-
+  dump(*moduleAST);
   return 0;
 }
 
@@ -251,10 +234,6 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
 }
 
 static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
-  // Initialize LLVM targets
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
-
   // Register the translation to LLVM IR with the MLIR context.
   mlir::registerBuiltinDialectTranslation(*module->getContext());
   mlir::registerLLVMDialectTranslation(*module->getContext());
@@ -331,28 +310,26 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
   return 0;
 }
 
-static int dumpAST() {
-  if (inputType == InputType::MLIR) {
-    llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
-    return 5;
-  }
-
-  auto moduleAST = parseInputFile(inputFilename);
-  if (!moduleAST) {
-    return 1;
-  }
-
-  dump(*moduleAST);
-  return 0;
-}
-
 int main(int argc, char **argv) {
   // Register any command line options.
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
   mlir::registerPassManagerCLOptions();
 
+  // Initialize the infraestructure to give better errors when using LLVM code.
+  llvm::InitLLVM start(argc, argv);
+
+  // Initialize the target as the current architecture.
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
+
   cl::ParseCommandLineOptions(argc, argv, "toy compiler\n");
+
+  if (emitAction == Action::DumpAST) {
+    dumpAST();
+    return 0;
+  }
 
   // If we aren't dumping the AST, then we are compiling with/to MLIR.
   mlir::DialectRegistry registry;
