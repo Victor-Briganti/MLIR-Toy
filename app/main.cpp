@@ -301,6 +301,7 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
   // structs.
   llvm::PipelineTuningOptions PTO;
   PTO.LoopUnrolling = false;
+  PTO.LoopVectorization = false;
 
   // Build the PassBuilder using the custom Tuning Options.
   llvm::PassBuilder PB(tmOrError->get(), PTO, std::nullopt, &PIC);
