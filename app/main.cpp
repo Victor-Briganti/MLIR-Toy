@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "mlir/Dialect/Affine/Passes.h"
@@ -37,11 +36,8 @@
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PassInstrumentation.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/InitLLVM.h"
@@ -60,6 +56,10 @@
 
 using namespace toy;
 namespace cl = llvm::cl;
+
+//===------------------------------------------------------------------------===
+// CLI Options
+//===------------------------------------------------------------------------===
 
 static cl::opt<std::string> inputFilename(cl::Positional,
                                           cl::desc("<input toy file>"),
@@ -108,7 +108,11 @@ static cl::opt<bool> enablePrintPasses(
     "print-llvm-passes",
     cl::desc("Print all the passes being used in the LLVM IR"));
 
-/// Returns a Toy AST resulting from parsing the fil or a nullptr on error.
+//===------------------------------------------------------------------------===
+// Parsers (Toy and MLIR)
+//===------------------------------------------------------------------------===
+
+/// Returns a Toy AST resulting from parsing the file or a nullptr on error.
 static std::unique_ptr<toy::ModuleAST>
 parseInputFile(llvm::StringRef filename) {
   // Reads the source code to a MemoryBuffer or receive it directly from the
@@ -127,21 +131,7 @@ parseInputFile(llvm::StringRef filename) {
   return parser.parseModule();
 }
 
-static int dumpAST() {
-  if (inputType == InputType::MLIR) {
-    llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
-    return TOY_INPUT_INVALID;
-  }
-
-  auto moduleAST = parseInputFile(inputFilename);
-  if (!moduleAST) {
-    return TOY_PARSE_FAIL;
-  }
-
-  dump(*moduleAST);
-  return TOY_SUCCESS;
-}
-
+/// Fill the module with the compiled code.
 static int loadMLIR(mlir::MLIRContext &context,
                     mlir::OwningOpRef<mlir::ModuleOp> &module) {
   // Handle a '.toy' input to the compiler.
@@ -175,6 +165,10 @@ static int loadMLIR(mlir::MLIRContext &context,
 
   return TOY_SUCCESS;
 }
+
+//===------------------------------------------------------------------------===
+// Optimizer Pipeline
+//===------------------------------------------------------------------------===
 
 static int loadAndProcessMLIR(mlir::MLIRContext &context,
                               mlir::OwningOpRef<mlir::ModuleOp> &module) {
@@ -236,91 +230,37 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
   return TOY_SUCCESS;
 }
 
-static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
-  // Register the translation to LLVM IR with the MLIR context.
-  mlir::registerBuiltinDialectTranslation(*module->getContext());
-  mlir::registerLLVMDialectTranslation(*module->getContext());
+//===------------------------------------------------------------------------===
+// Dump
+//===------------------------------------------------------------------------===
 
-  // Convert the module to LLVM IR in a new LLVM IR context.
-  llvm::LLVMContext llvmContext;
-  auto llvmModule = mlir::translateModuleToLLVMIR(*module, llvmContext);
-  if (!llvmModule) {
-    llvm::errs() << "Failed to emit LLVM IR\n";
-    return TOY_LLVM_IR_FAIL;
+static int dumpAST() {
+  if (inputType == InputType::MLIR) {
+    llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
+    return TOY_INPUT_INVALID;
   }
 
-  // Configure the LLVM Module.
-  auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
-  if (!tmBuilderOrError) {
-    llvm::errs() << "Could not create JITTargetMachineBuilder\n";
-    return TOY_JIT_CREATION_FAIL;
+  auto moduleAST = parseInputFile(inputFilename);
+  if (!moduleAST) {
+    return TOY_PARSE_FAIL;
   }
 
-  auto tmOrError = tmBuilderOrError->createTargetMachine();
-  if (!tmOrError) {
-    llvm::errs() << "Could not create TargetMachine\n";
-    return TOY_TARGET_MACH_FAIL;
-  }
-
-  mlir::ExecutionEngine::setupTargetTripleAndDataLayout(llvmModule.get(),
-                                                        tmOrError->get());
-
-  // Create the analysis managers
-  llvm::LoopAnalysisManager LAM;
-  llvm::FunctionAnalysisManager FAM;
-  llvm::CGSCCAnalysisManager CGAM;
-  llvm::ModuleAnalysisManager MAM;
-
-  // Set up Pass Instrumentation for debugging
-  llvm::PassInstrumentationCallbacks PIC;
-  llvm::PrintPassOptions PPO;
-
-  llvm::StandardInstrumentations SI(llvmContext, enablePrintPasses, false, PPO);
-  SI.registerCallbacks(PIC, &MAM);
-
-  // Disable aggressive loop unrolling. This stops the CFG from flattening and
-  // prevents the GVN/MemoryDependenceAnalysis from hanging on the MemRef
-  // structs.
-  llvm::PipelineTuningOptions PTO;
-  PTO.LoopUnrolling = false;
-  PTO.LoopVectorization = false;
-
-  // Build the PassBuilder using the custom Tuning Options.
-  llvm::PassBuilder PB(tmOrError->get(), PTO, std::nullopt, &PIC);
-
-  PB.registerModuleAnalyses(MAM);
-  PB.registerCGSCCAnalyses(CGAM);
-  PB.registerFunctionAnalyses(FAM);
-  PB.registerLoopAnalyses(LAM);
-  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-  // Create the pipeline
-  llvm::OptimizationLevel optLvl =
-      enableOpt ? llvm::OptimizationLevel::O3 : llvm::OptimizationLevel::O0;
-  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(optLvl);
-
-  // Verify if the code is not broken
-  bool isBroken = llvm::verifyModule(*llvmModule, &llvm::errs());
-  if (isBroken) {
-    llvm::errs() << "Error: LLVM IR is malformed!\n";
-    llvm::errs() << *llvmModule << "\n";
-    return TOY_LLVM_IR_FAIL;
-  }
-
-  // Run the pipeline (this modifies llvmModule in-place)
-  MPM.run(*llvmModule, MAM);
-  llvm::errs() << *llvmModule << "\n";
+  dump(*moduleAST);
   return TOY_SUCCESS;
 }
 
+//===------------------------------------------------------------------------===
+// Compiler Entry Point
+//===------------------------------------------------------------------------===
+
 int main(int argc, char **argv) {
+  // Initialize the infraestructure to give better errors when using LLVM code.
+  llvm::InitLLVM start(argc, argv);
+  
   // Register any command line options.
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
   mlir::registerPassManagerCLOptions();
-
-  // Initialize the infraestructure to give better errors when using LLVM code.
-  llvm::InitLLVM start(argc, argv);
 
   // Initialize the target as the current architecture.
   llvm::InitializeNativeTarget();
@@ -351,10 +291,6 @@ int main(int argc, char **argv) {
   if (Action::DumpMLIRLLVM >= emitAction) {
     module->dump();
     return TOY_SUCCESS;
-  }
-
-  if (emitAction == Action::DumpLLVMIR) {
-    return dumpLLVMIR(module);
   }
 
   llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
