@@ -18,16 +18,18 @@
 #include "mlir/Dialect/Affine/Passes.h"
 #include "mlir/Dialect/Func/Extensions/AllExtensions.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/LLVMIR/Transforms/InlinerInterfaceImpl.h"
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
+#include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
+#include "mlir/InitAllDialects.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Support/LLVM.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
@@ -46,13 +48,13 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "ErrorCode.h"
 #include "toy/AST.h"
 #include "toy/Dialect.h"
 #include "toy/Lexer.h"
 #include "toy/MLIRGen.h"
 #include "toy/Parser.h"
 #include "toy/Passes.h"
-#include "ErrorCode.h"
 
 using namespace toy;
 namespace cl = llvm::cl;
@@ -84,7 +86,8 @@ enum class Action {
   DumpMLIRToy,
   DumpMLIRAffine,
   DumpMLIRLLVM,
-  DumpLLVMIR
+  DumpLLVMIR,
+  RunJIT
 };
 } // namespace
 static cl::opt<Action> emitAction(
@@ -97,16 +100,13 @@ static cl::opt<Action> emitAction(
     cl::values(clEnumValN(Action::DumpMLIRLLVM, "mlir-llvm",
                           "output the MLIR LLVM dialect dump")),
     cl::values(clEnumValN(Action::DumpLLVMIR, "llvm",
-                          "output the LLVM IR dump"))
+                          "output the LLVM IR dump")),
+    cl::values(clEnumValN(Action::RunJIT, "jit", "JIT the code and run it"))
 
 );
 
 static cl::opt<bool>
     enableOpt("opt", cl::desc("Enable the optimizations in code generation"));
-
-static cl::opt<bool> enablePrintPasses(
-    "print-llvm-passes",
-    cl::desc("Print all the passes being used in the LLVM IR"));
 
 //===------------------------------------------------------------------------===
 // Parsers (Toy and MLIR)
@@ -249,6 +249,66 @@ static int dumpAST() {
   return TOY_SUCCESS;
 }
 
+static int dumpLLVMIR(mlir::ModuleOp module) {
+  // Register the translation to LLVM IR with the MLIR context.
+  mlir::registerBuiltinDialectTranslation(*module->getContext());
+  mlir::registerLLVMDialectTranslation(*module->getContext());
+
+  // Convert the module to LLVM IR in a new LLVM IR context.
+  llvm::LLVMContext llvmContext;
+  auto llvmModule = mlir::translateModuleToLLVMIR(module, llvmContext);
+  if (!llvmModule) {
+    llvm::errs() << "Failed to emit LLVM IR\n";
+    return TOY_GEN_FAIL;
+  }
+
+  // Initialize LLVM targets.
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+
+  if (enableOpt) {
+    auto optPipeline = mlir::makeOptimizingTransformer(3, 0, nullptr);
+    if (auto err = optPipeline(llvmModule.get())) {
+      llvm::errs() << "Failed to optimize LLVM IR\n";
+      return TOY_GEN_FAIL;
+    }
+  }
+
+  // Print the LLVM IR module.
+  llvmModule->print(llvm::errs(), nullptr);
+  return TOY_SUCCESS;
+}
+
+static int runJit(mlir::ModuleOp module) {
+  // Initialize the translation to LLVM IR.
+  mlir::registerBuiltinDialectTranslation(*module->getContext());
+  mlir::registerLLVMDialectTranslation(*module->getContext());
+
+  // An optimization pipeline to use within the execution engine.
+  auto optPipeline =
+      mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0, nullptr);
+
+  // Create an MLIR execution engine. The JIT compilation will be performed with
+  // LLVM's Orc JIT stack.
+  mlir::ExecutionEngineOptions engineOptions;
+  engineOptions.transformer = optPipeline;
+  auto maybeEngine = mlir::ExecutionEngine::create(module, engineOptions);
+  if (!maybeEngine) {
+    llvm::errs() << "Failed to construct an execution engine\n";
+    return TOY_GEN_FAIL;
+  }
+  auto &engine = maybeEngine.get();
+
+  // Invoke the JIT-compiled function with the name "main".
+  auto invocationResult = engine->invokePacked("main");
+  if (invocationResult) {
+    llvm::errs() << "JIT invocation failed\n";
+    return TOY_GEN_FAIL;
+  }
+
+  return TOY_SUCCESS;
+}
+
 //===------------------------------------------------------------------------===
 // Compiler Entry Point
 //===------------------------------------------------------------------------===
@@ -256,7 +316,7 @@ static int dumpAST() {
 int main(int argc, char **argv) {
   // Initialize the infraestructure to give better errors when using LLVM code.
   llvm::InitLLVM start(argc, argv);
-  
+
   // Register any command line options.
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
@@ -270,12 +330,12 @@ int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv, "toy compiler\n");
 
   if (emitAction == Action::DumpAST) {
-    dumpAST();
-    return TOY_SUCCESS;
+    return dumpAST();
   }
 
   // If we aren't dumping the AST, then we are compiling with/to MLIR.
   mlir::DialectRegistry registry;
+  mlir::registerAllDialects(registry);
   mlir::func::registerAllExtensions(registry);
 
   mlir::MLIRContext context(registry);
@@ -291,6 +351,14 @@ int main(int argc, char **argv) {
   if (Action::DumpMLIRLLVM >= emitAction) {
     module->dump();
     return TOY_SUCCESS;
+  }
+
+  if (emitAction == Action::DumpLLVMIR) {
+    return dumpLLVMIR(*module);
+  }
+
+  if (emitAction == Action::RunJIT) {
+    return runJit(*module);
   }
 
   llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
