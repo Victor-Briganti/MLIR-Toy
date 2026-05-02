@@ -19,7 +19,7 @@ toy.func @main() {
   %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
   %2 = toy.transpose(%0 : tensor<2x3xf64>) to tensor<3x2xf64>
   // CHECK: affine.for %[[ARG0:.*]] = 0 to 3
-  // CHECK: affine.for %[[ARG1:.*]] = 0 to 2 
+  // CHECK: affine.for %[[ARG1:.*]] = 0 to 2
   // CHECK: %[[CONST0:.*]] = affine.load %[[ALLOC1]][%[[ARG1]], %[[ARG0]]] : memref<2x3xf64>
   // CHECK: %[[CONST1:.*]] = arith.mulf %[[CONST0]], %[[CONST0]] : f64
   // CHECK: affine.store %[[CONST1]], %[[ALLOC0]][%[[ARG0]], %[[ARG1]]] : memref<3x2xf64>

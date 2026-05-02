@@ -7,6 +7,7 @@ def main() {
   var b<2, 3> = a;
   var c<6> = b;
   var d<3, 2> = c;
-  # CHECK: toy.return %[[VAR0]] : tensor<3x2xf64>
-  return d;
+  # CHECK: toy.print %[[VAR0]] : tensor<3x2xf64>
+  print(d);
+  return;
 }

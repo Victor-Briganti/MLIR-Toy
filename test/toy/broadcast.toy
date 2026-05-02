@@ -3,7 +3,7 @@
 def main() {
   var a<2, 3> = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
   var b<2, 1> = [[10.0], [20.0]];
-  
+
   # A (2x3) + B (2x1) -> Result (2x3)
   # B needs to be broadcasted to (2x3)
   # CHECK-LABEL: toy.func @main
@@ -32,10 +32,10 @@ def complex_broadcast() {
   # This test just verifies that the compiler generates compatible shapes.
   # Since Toy doesn't easily support 4D literals in a simple way without deep nesting,
   # we'll just test a 2D vs 1D case that uses the same logic.
-  
+
   var a<1, 6> = [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]];
   var b<3, 1> = [[10.0], [20.0], [30.0]];
-  
+
   # A (1x6) + B (3x1) -> Result (3x6)
   # CHECK-LABEL: toy.func private @complex_broadcast
   # CHECK: %[[AC_CST:.*]] = toy.constant dense<{{.*}}> : tensor<1x6xf64>

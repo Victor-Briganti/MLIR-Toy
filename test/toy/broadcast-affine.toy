@@ -10,12 +10,12 @@ def main() {
   var a<2, 3> = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
   var b<2, 1> = [[10.0], [20.0]];
 
-  # CHECK: affine.for %[[ARG0:.*]] = 0 to 2 
+  # CHECK: affine.for %[[ARG0:.*]] = 0 to 2
   # CHECK-NEXT: affine.for %[[ARG1:.*]] = 0 to 3
   # CHECK-NEXT: %[[VAL_B:.*]] = affine.load %[[ALLOC_B]][%[[ARG0]], 0] : memref<2x1xf64>
   # CHECK-NEXT: affine.store %[[VAL_B]], %[[ALLOC_BROADCAST]][%[[ARG0]], %[[ARG1]]] : memref<2x3xf64>
 
-  # CHECK: affine.for %[[ARG0_ADD:.*]] = 0 to 2 
+  # CHECK: affine.for %[[ARG0_ADD:.*]] = 0 to 2
   # CHECK-NEXT: affine.for %[[ARG1_ADD:.*]] = 0 to 3
   # CHECK-NEXT: %[[VAL_A:.*]] = affine.load %[[ALLOC_A]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
   # CHECK-NEXT: %[[VAL_BROADCAST:.*]] = affine.load %[[ALLOC_BROADCAST]][%[[ARG0_ADD]], %[[ARG1_ADD]]] : memref<2x3xf64>
