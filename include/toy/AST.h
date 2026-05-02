@@ -7,6 +7,7 @@
 // Modified by: Victor Briganti in 2026
 //
 //===----------------------------------------------------------------------===//
+//
 // This file implements the AST for the Toy language. It is optimized for
 // simplicity, not efficiency. The AST forms a tree structure where each node
 // references its children using std::unique_ptr.

@@ -56,6 +56,7 @@
 #include "toy/MLIRGen.h"
 #include "toy/Parser.h"
 #include "toy/Passes.h"
+#include "ErrorCode.h"
 
 using namespace toy;
 namespace cl = llvm::cl;
@@ -129,16 +130,16 @@ parseInputFile(llvm::StringRef filename) {
 static int dumpAST() {
   if (inputType == InputType::MLIR) {
     llvm::errs() << "Can't dump a Toy AST when the input is MLIR\n";
-    return 5;
+    return TOY_INPUT_INVALID;
   }
 
   auto moduleAST = parseInputFile(inputFilename);
   if (!moduleAST) {
-    return 1;
+    return TOY_PARSE_FAIL;
   }
 
   dump(*moduleAST);
-  return 0;
+  return TOY_SUCCESS;
 }
 
 static int loadMLIR(mlir::MLIRContext &context,
@@ -148,11 +149,11 @@ static int loadMLIR(mlir::MLIRContext &context,
       !llvm::StringRef(inputFilename).ends_with(".mlir")) {
     auto moduleAST = parseInputFile(inputFilename);
     if (!moduleAST) {
-      return 6;
+      return TOY_PARSE_FAIL;
     }
 
     module = mlirGen(context, *moduleAST);
-    return !module ? 1 : 0;
+    return !module ? TOY_GEN_FAIL : TOY_SUCCESS;
   }
 
   // Otherwise, the input is '.mlir'
@@ -160,7 +161,7 @@ static int loadMLIR(mlir::MLIRContext &context,
       llvm::MemoryBuffer::getFileOrSTDIN(inputFilename);
   if (std::error_code ec = fileOrErr.getError()) {
     llvm::errs() << "Could not open input file: " << ec.message() << "\n";
-    return -1;
+    return TOY_INPUT_INVALID;
   }
 
   // Parse the input MLIR.
@@ -169,10 +170,10 @@ static int loadMLIR(mlir::MLIRContext &context,
   module = mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
   if (!module) {
     llvm::errs() << "Error can't load file " << inputFilename << "\n";
-    return 3;
+    return TOY_PARSE_FAIL;
   }
 
-  return 0;
+  return TOY_SUCCESS;
 }
 
 static int loadAndProcessMLIR(mlir::MLIRContext &context,
@@ -184,7 +185,8 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
   mlir::PassManager pm(module.get()->getName());
   // Apply any generic pass manager command line options and run the pipeline.
   if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
-    return 4;
+    llvm::errs() << "Could not apply the command line passes\n";
+    return TOY_CLI_PASS_FAIL;
   }
 
   // Check to see what granularity of MLIR we are compiling to.
@@ -227,10 +229,11 @@ static int loadAndProcessMLIR(mlir::MLIRContext &context,
   }
 
   if (mlir::failed(pm.run(*module))) {
-    return 4;
+    llvm::errs() << "Could not run optimizers passes on the module\n";
+    return TOY_PIPELINE_PASS_FAIL;
   }
 
-  return 0;
+  return TOY_SUCCESS;
 }
 
 static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
@@ -243,20 +246,20 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
   auto llvmModule = mlir::translateModuleToLLVMIR(*module, llvmContext);
   if (!llvmModule) {
     llvm::errs() << "Failed to emit LLVM IR\n";
-    return -1;
+    return TOY_LLVM_IR_FAIL;
   }
 
   // Configure the LLVM Module.
   auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
   if (!tmBuilderOrError) {
     llvm::errs() << "Could not create JITTargetMachineBuilder\n";
-    return -1;
+    return TOY_JIT_CREATION_FAIL;
   }
 
   auto tmOrError = tmBuilderOrError->createTargetMachine();
   if (!tmOrError) {
     llvm::errs() << "Could not create TargetMachine\n";
-    return -1;
+    return TOY_TARGET_MACH_FAIL;
   }
 
   mlir::ExecutionEngine::setupTargetTripleAndDataLayout(llvmModule.get(),
@@ -301,13 +304,13 @@ static int dumpLLVMIR(mlir::OwningOpRef<mlir::ModuleOp> &module) {
   if (isBroken) {
     llvm::errs() << "Error: LLVM IR is malformed!\n";
     llvm::errs() << *llvmModule << "\n";
-    return -1;
+    return TOY_LLVM_IR_FAIL;
   }
 
   // Run the pipeline (this modifies llvmModule in-place)
   MPM.run(*llvmModule, MAM);
   llvm::errs() << *llvmModule << "\n";
-  return 0;
+  return TOY_SUCCESS;
 }
 
 int main(int argc, char **argv) {
@@ -328,7 +331,7 @@ int main(int argc, char **argv) {
 
   if (emitAction == Action::DumpAST) {
     dumpAST();
-    return 0;
+    return TOY_SUCCESS;
   }
 
   // If we aren't dumping the AST, then we are compiling with/to MLIR.
@@ -347,7 +350,7 @@ int main(int argc, char **argv) {
   // If we aren't exporting to non-mlir, then we are done.
   if (Action::DumpMLIRLLVM >= emitAction) {
     module->dump();
-    return 0;
+    return TOY_SUCCESS;
   }
 
   if (emitAction == Action::DumpLLVMIR) {
@@ -355,5 +358,5 @@ int main(int argc, char **argv) {
   }
 
   llvm::errs() << "No action specified (parsing only?), use -emit=<action>\n";
-  return -1;
+  return TOY_UNDEFINED;
 }
