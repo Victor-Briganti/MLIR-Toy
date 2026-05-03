@@ -262,10 +262,6 @@ static int dumpLLVMIR(mlir::ModuleOp module) {
     return TOY_GEN_FAIL;
   }
 
-  // Initialize LLVM targets.
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
-
   if (enableOpt) {
     auto optPipeline = mlir::makeOptimizingTransformer(3, 0, nullptr);
     if (auto err = optPipeline(llvmModule.get())) {
