@@ -39,8 +39,11 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PassInstrumentation.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -48,13 +51,14 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "ErrorCode.h"
 #include "toy/AST.h"
 #include "toy/Dialect.h"
 #include "toy/Lexer.h"
 #include "toy/MLIRGen.h"
 #include "toy/Parser.h"
 #include "toy/Passes.h"
+
+#include "ErrorCode.h"
 
 using namespace toy;
 namespace cl = llvm::cl;
@@ -68,8 +72,12 @@ static cl::opt<std::string> inputFilename(cl::Positional,
                                           cl::init("-"),
                                           cl::value_desc("filename"));
 
+static cl::opt<bool>
+    printPasses("print-passes",
+                cl::desc("Print LLVM passes during optimization"));
+
 namespace {
-enum class InputType { Toy, MLIR };
+enum class InputType { Toy, MLIR, LLVM };
 } // namespace
 static cl::opt<InputType>
     inputType("x", cl::init(InputType::Toy),
@@ -77,7 +85,9 @@ static cl::opt<InputType>
               cl::values(clEnumValN(InputType::Toy, "toy",
                                     "load the input file as a Toy source")),
               cl::values(clEnumValN(InputType::MLIR, "mlir",
-                                    "load the input file as a MLIR file")));
+                                    "load the input file as a MLIR file")),
+              cl::values(clEnumValN(InputType::LLVM, "llvm",
+                                    "load the input file as an LLVM IR file")));
 
 namespace {
 enum class Action {
@@ -170,6 +180,34 @@ static int loadMLIR(mlir::MLIRContext &context,
 // Optimizer Pipeline
 //===------------------------------------------------------------------------===
 
+static int runLLVMOptimizations(llvm::Module &llvmModule) {
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
+
+  llvm::PassInstrumentationCallbacks PIC;
+  llvm::StandardInstrumentations SI(llvmModule.getContext(),
+                                    /*DebugLogging=*/printPasses);
+  SI.registerCallbacks(PIC, &MAM);
+
+  llvm::PassBuilder PB(nullptr, llvm::PipelineTuningOptions(), std::nullopt,
+                       &PIC);
+
+  // Register all the basic analyses with the managers.
+  PB.registerModuleAnalyses(MAM);
+  PB.registerCGSCCAnalyses(CGAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerLoopAnalyses(LAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+  llvm::OptimizationLevel level = llvm::OptimizationLevel::O3;
+  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(level);
+
+  MPM.run(llvmModule, MAM);
+  return TOY_SUCCESS;
+}
+
 static int loadAndProcessMLIR(mlir::MLIRContext &context,
                               mlir::OwningOpRef<mlir::ModuleOp> &module) {
   if (int error = loadMLIR(context, module)) {
@@ -249,25 +287,22 @@ static int dumpAST() {
   return TOY_SUCCESS;
 }
 
-static int dumpLLVMIR(mlir::ModuleOp module) {
+int dumpLLVMIR(mlir::ModuleOp module) {
   // Register the translation to LLVM IR with the MLIR context.
   mlir::registerBuiltinDialectTranslation(*module->getContext());
   mlir::registerLLVMDialectTranslation(*module->getContext());
 
   // Convert the module to LLVM IR in a new LLVM IR context.
   llvm::LLVMContext llvmContext;
-  auto llvmModule = mlir::translateModuleToLLVMIR(module, llvmContext);
+  std::unique_ptr<llvm::Module> llvmModule =
+      mlir::translateModuleToLLVMIR(module, llvmContext);
   if (!llvmModule) {
     llvm::errs() << "Failed to emit LLVM IR\n";
     return TOY_GEN_FAIL;
   }
 
   if (enableOpt) {
-    auto optPipeline = mlir::makeOptimizingTransformer(3, 0, nullptr);
-    if (auto err = optPipeline(llvmModule.get())) {
-      llvm::errs() << "Failed to optimize LLVM IR\n";
-      return TOY_GEN_FAIL;
-    }
+    runLLVMOptimizations(*llvmModule);
   }
 
   // Print the LLVM IR module.
@@ -281,13 +316,15 @@ static int runJit(mlir::ModuleOp module) {
   mlir::registerLLVMDialectTranslation(*module->getContext());
 
   // An optimization pipeline to use within the execution engine.
-  auto optPipeline =
-      mlir::makeOptimizingTransformer(enableOpt ? 3 : 0, 0, nullptr);
+  auto optPipeline = [](llvm::Module *m) -> llvm::Error {
+    runLLVMOptimizations(*m);
+    return llvm::Error::success();
+  };
 
-  // Create an MLIR execution engine. The JIT compilation will be performed with
-  // LLVM's Orc JIT stack.
+  // Create an MLIR execution engine. The JIT compilation will be performed
+  // with LLVM's Orc JIT stack.
   mlir::ExecutionEngineOptions engineOptions;
-  engineOptions.transformer = optPipeline;
+  // engineOptions.transformer = optPipeline;
   auto maybeEngine = mlir::ExecutionEngine::create(module, engineOptions);
   if (!maybeEngine) {
     llvm::errs() << "Failed to construct an execution engine\n";
@@ -310,7 +347,8 @@ static int runJit(mlir::ModuleOp module) {
 //===------------------------------------------------------------------------===
 
 int main(int argc, char **argv) {
-  // Initialize the infraestructure to give better errors when using LLVM code.
+  // Initialize the infraestructure to give better errors when using LLVM
+  // code.
   llvm::InitLLVM start(argc, argv);
 
   // Register any command line options.

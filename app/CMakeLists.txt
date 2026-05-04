@@ -1,7 +1,7 @@
 add_executable(main main.cpp)
 add_executable(mlirtoy::main ALIAS main)
 
-mlirtoy_link_llvm_components(main Support Core)
+mlirtoy_link_llvm_components(main Support Core AsmParser AsmPrinter Passes)
 mlirtoy_link_mlir_libs(
   main
   MLIRAffineDialect
